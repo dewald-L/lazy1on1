@@ -9,7 +9,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"oto/internal/store"
+	"lazy1on1/internal/store"
 )
 
 type editorFinishedMsg struct{ err error }

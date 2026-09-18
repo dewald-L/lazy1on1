@@ -1,4 +1,4 @@
-# oto
+# lazy1on1
 
 A lazygit-style terminal UI for continuous 1:1 note taking. Add the people
 you meet with, start a new meeting at any time, jot notes as you talk, track
@@ -27,10 +27,10 @@ data/
 
 That means you can `grep` across every 1:1 you've ever had, put the whole
 directory under git for history and backup, or edit a file by hand in your
-usual editor — `oto` will pick up the change next time it reads the file.
+usual editor — `lazy1on1` will pick up the change next time it reads the file.
 
 Override the data directory with `-dir` or the `ONETOONES_DIR` environment
-variable; it defaults to a `data` folder next to the `oto` binary.
+variable; it defaults to a `data` folder next to the `lazy1on1` binary.
 
 ## A meeting file
 
@@ -84,9 +84,9 @@ meeting's own notes.
 ## Running it
 
 ```sh
-go build -o oto .
-./oto                      # uses ./data, next to the binary
-./oto -dir ./my-1-1-notes  # or point it somewhere else
+go build -o lazy1on1 .
+./lazy1on1                      # uses ./data, next to the binary
+./lazy1on1 -dir ./my-1-1-notes  # or point it somewhere else
 ```
 
 Go 1.21+ is required. There are no runtime dependencies beyond your

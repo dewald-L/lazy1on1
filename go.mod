@@ -1,4 +1,4 @@
-module oto
+module lazy1on1
 
 go 1.24.7
 

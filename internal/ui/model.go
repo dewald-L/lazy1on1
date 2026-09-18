@@ -8,7 +8,7 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 
-	"oto/internal/store"
+	"lazy1on1/internal/store"
 )
 
 type panelID int

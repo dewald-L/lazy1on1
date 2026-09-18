@@ -1,4 +1,4 @@
-# oto
+# lazy1on1
 
 Lazygit-style terminal UI (Bubble Tea) for continuous 1:1 note taking. See
 `README.md` for feature/keybinding details.
@@ -6,10 +6,10 @@ Lazygit-style terminal UI (Bubble Tea) for continuous 1:1 note taking. See
 ## Commands
 
 ```sh
-go build -o oto .   # build
-go vet ./...         # vet
-go test ./...        # test (internal/store only, currently)
-./oto -dir ./tmp     # run against a scratch data dir instead of the default ./data
+go build -o lazy1on1 .   # build
+go vet ./...              # vet
+go test ./...             # test (internal/store only, currently)
+./lazy1on1 -dir ./tmp     # run against a scratch data dir instead of the default ./data
 ```
 
 ## Architecture

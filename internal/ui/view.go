@@ -7,7 +7,7 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 
-	"oto/internal/store"
+	"lazy1on1/internal/store"
 )
 
 func (a *App) View() string {
@@ -577,7 +577,7 @@ func (a *App) renderStatusBar() string {
 	if a.errMsg != "" {
 		msg = "error: " + a.errMsg
 	}
-	left := "oto — continuous 1:1 notes"
+	left := "lazy1on1 — continuous 1:1 notes"
 	right := msg
 	gap := a.width - lipgloss.Width(left) - lipgloss.Width(right) - 2
 	if gap < 1 {
@@ -728,7 +728,7 @@ func (a *App) renderConfirmDeleteModal() string {
 
 func (a *App) renderHelpModal() string {
 	var b strings.Builder
-	b.WriteString(titleStyle.Render("oto — keybindings") + "\n\n")
+	b.WriteString(titleStyle.Render("lazy1on1 — keybindings") + "\n\n")
 	sections := [][2]string{
 		{"Navigation", "tab / shift+tab     cycle panel\n1/2/3/4/5/6         jump to People / Goals / Meetings / Actions / Global Notes / Meeting notes\n↑/k, ↓/j            move cursor within panel\nspace               confirm cursor as selection (People)\n                    (Meetings syncs the Meeting notes panel as you move, no space needed)\n→/l/enter           confirm selection and drill into panel\n←/h/esc             back out"},
 		{"People & meetings", "n   new — contextual per panel:\n      People        new person\n      Goals         new goal (long-term or short-term)\n      Meetings      new meeting now (opens editor)\n      Actions,\n      Meeting notes quick-add an action item to the selected meeting\nd   delete — contextual per panel, always asks to confirm:\n      People        delete the selected person and all their data\n      Goals         delete the selected goal\n      Meetings,\n      Meeting notes delete the selected/current meeting\n      Actions       delete the selected action item\n      Global Notes  clear the person's global notes\nr   rename/cycle RAG — contextual per panel:\n      People        rename the selected person\n      Goals         rename the selected goal\n      Actions       rename the selected action item\n      Meetings      cycle RAG status (none→green→amber→red)"},

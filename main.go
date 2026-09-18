@@ -1,10 +1,10 @@
-// Command oto is a lazygit-style terminal UI for continuous 1:1 note taking:
+// Command lazy1on1 is a lazygit-style terminal UI for continuous 1:1 note taking:
 // add the people you meet with, start a new meeting at any time, jot notes,
 // track a RAG (red/amber/green) status per session, and keep a running list
 // of action items across everyone you meet with.
 //
 // Data is stored as plain markdown files under -dir (default: a "data"
-// folder next to the oto binary, or $ONETOONES_DIR), one folder per person
+// folder next to the lazy1on1 binary, or $ONETOONES_DIR), one folder per person
 // and one file per meeting, so it stays readable, greppable, and easy to
 // back up with git.
 package main
@@ -17,8 +17,8 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"oto/internal/store"
-	"oto/internal/ui"
+	"lazy1on1/internal/store"
+	"lazy1on1/internal/ui"
 )
 
 func defaultDir() string {
@@ -41,14 +41,14 @@ func main() {
 
 	s := store.New(*dir)
 	if err := s.EnsureRoot(); err != nil {
-		fmt.Fprintf(os.Stderr, "oto: could not create data directory %s: %v\n", *dir, err)
+		fmt.Fprintf(os.Stderr, "lazy1on1: could not create data directory %s: %v\n", *dir, err)
 		os.Exit(1)
 	}
 
 	app := ui.New(s)
 	p := tea.NewProgram(app, tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
-		fmt.Fprintf(os.Stderr, "oto: %v\n", err)
+		fmt.Fprintf(os.Stderr, "lazy1on1: %v\n", err)
 		os.Exit(1)
 	}
 }
