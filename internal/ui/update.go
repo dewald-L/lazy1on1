@@ -219,6 +219,8 @@ func (a *App) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return a.cycleRAG()
 		}
 		return a.renameForFocus()
+	case isKey(msg, "L"):
+		return a.toggleLockForFocus()
 	case isKey(msg, "tab"):
 		a.setFocus((a.focus + 1) % 6)
 		return a, nil
@@ -296,7 +298,7 @@ func (a *App) newForFocus() (tea.Model, tea.Cmd) {
 	case panelMeetings:
 		return a.newMeetingNow()
 	case panelActions, panelDetail:
-		if a.currentMeeting() != nil {
+		if m := a.currentMeeting(); m != nil && !a.blockIfLocked(m) {
 			a.quickInput.Reset()
 			a.quickInput.Placeholder = "Action item text"
 			a.quickAddKind = quickAddAction
@@ -405,6 +407,9 @@ func (a *App) renameActionItemPrompt() (tea.Model, tea.Cmd) {
 		return a, nil
 	}
 	row := items[a.actionIdx]
+	if a.blockIfLocked(&row.Meeting) {
+		return a, nil
+	}
 	meeting := row.Meeting
 	return a.startRename("Rename action item", row.Item.Text, func(text string) {
 		if err := a.store.RenameActionItem(&meeting, row.Item.LineNo, text); err != nil {
@@ -465,7 +470,7 @@ func (a *App) confirmDeleteGoal() (tea.Model, tea.Cmd) {
 // every move via selectMeeting, unlike People's cursor/idx split).
 func (a *App) confirmDeleteMeeting() (tea.Model, tea.Cmd) {
 	m := a.currentMeeting()
-	if m == nil {
+	if m == nil || a.blockIfLocked(m) {
 		return a, nil
 	}
 	meeting := *m
@@ -488,6 +493,9 @@ func (a *App) confirmDeleteActionItem() (tea.Model, tea.Cmd) {
 		return a, nil
 	}
 	row := items[a.actionIdx]
+	if a.blockIfLocked(&row.Meeting) {
+		return a, nil
+	}
 	meeting := row.Meeting
 	a.confirmMsg = fmt.Sprintf("Delete action item %q?", row.Item.Text)
 	a.confirmDelete = func() {
@@ -843,12 +851,59 @@ func (a *App) refreshDetailKeepCursor() {
 	a.detailCursor = keep
 }
 
+// toggleLockForFocus runs "lock/unlock the current meeting" for whichever
+// panel currently has focus, mirroring deleteForFocus: Meetings and Meeting
+// notes are the only two panels that operate on "the currently selected
+// meeting" (see confirmDeleteMeeting), so 'L' is a no-op everywhere else.
+func (a *App) toggleLockForFocus() (tea.Model, tea.Cmd) {
+	switch a.focus {
+	case panelMeetings, panelDetail:
+		return a.toggleLock()
+	}
+	return a, nil
+}
+
+func (a *App) toggleLock() (tea.Model, tea.Cmd) {
+	m := a.currentMeeting()
+	if m == nil {
+		return a, nil
+	}
+	locked := !m.Locked
+	if err := a.store.SetLocked(m, locked); err != nil {
+		a.errMsg = err.Error()
+		return a, nil
+	}
+	a.refreshDetailKeepCursor()
+	if locked {
+		a.status = "locked meeting"
+	} else {
+		a.status = "unlocked meeting"
+	}
+	return a, nil
+}
+
+// blockIfLocked is the front-line guard for actions that would otherwise
+// open an editor or a text-input modal against a locked meeting: it stops
+// the action before any input is collected, rather than letting the store's
+// own lock check (see errMeetingLocked in store.go) reject the save
+// afterward and silently discard whatever the user just typed. The store
+// methods still enforce the same rule independently, since some call paths
+// (e.g. the Actions panel) reach a meeting other than a.currentMeeting().
+func (a *App) blockIfLocked(m *store.Meeting) bool {
+	if m == nil || !m.Locked {
+		return false
+	}
+	a.status = "meeting is locked — press L to unlock"
+	return true
+}
+
 // startAddWin opens the quick-add modal for logging a win since the last
 // 1:1, reusing the same textinput/modal path as quick-adding an action
 // item (see newForFocus) but tagged with quickAddWin so handleQuickAddKey
 // appends it under "## Wins" instead.
 func (a *App) startAddWin() (tea.Model, tea.Cmd) {
-	if a.currentMeeting() == nil {
+	m := a.currentMeeting()
+	if m == nil || a.blockIfLocked(m) {
 		return a, nil
 	}
 	a.quickInput.Reset()
@@ -890,7 +945,7 @@ func notesForEditing(m *store.Meeting) string {
 // end of the document instead.
 func (a *App) startEditNotes() (tea.Model, tea.Cmd) {
 	m := a.currentMeeting()
-	if m == nil {
+	if m == nil || a.blockIfLocked(m) {
 		return a, nil
 	}
 	a.setFocus(panelDetail)
@@ -928,7 +983,7 @@ func (a *App) startEditNotes() (tea.Model, tea.Cmd) {
 
 func (a *App) openExternalEditor() (tea.Model, tea.Cmd) {
 	m := a.currentMeeting()
-	if m == nil {
+	if m == nil || a.blockIfLocked(m) {
 		return a, nil
 	}
 	editor := os.Getenv("EDITOR")
@@ -1211,4 +1266,3 @@ func (a *App) handleEditGlobalNotesKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	a.globalNotesEditArea, cmd = a.globalNotesEditArea.Update(msg)
 	return a, cmd
 }
-

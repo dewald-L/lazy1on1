@@ -133,6 +133,7 @@ type Meeting struct {
 	RAG            RAG
 	PerceivedPulse PerceivedPulse
 	Tags           []string
+	Locked         bool     // true once locked: every other mutation on this meeting is rejected until unlocked
 	BodyLines      []string // raw markdown body, split by line, frontmatter stripped
 
 	ActionItems []ActionItem

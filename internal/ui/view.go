@@ -244,6 +244,9 @@ func (a *App) renderMeetingsPanel() string {
 		glyphStyle := style.Foreground(ragColor(string(m.RAG)))
 		line := glyphStyle.Render(ragGlyphChar(string(m.RAG))) + style.Render(" "+relDate(m.Date))
 		b.WriteString(line)
+		if m.Locked {
+			b.WriteString(dimItemStyle.Render("  (locked)"))
+		}
 		if open > 0 {
 			b.WriteString(dimItemStyle.Render(fmt.Sprintf("  (%d open)", open)))
 		}
@@ -374,7 +377,11 @@ func (a *App) renderDetailPanel() string {
 
 	if m != nil {
 		header := fmt.Sprintf("%sMeeting notes — %s  %s  %s", detailShortcut, p.Name, ragStyledGlyph(string(m.RAG)), m.Date.Format("Mon, Jan 2 2006 · 15:04"))
-		b.WriteString(panelTitleStyle.Render(header) + "\n")
+		headerLine := panelTitleStyle.Render(header)
+		if m.Locked {
+			headerLine += "  " + lockedBadgeStyle.Render("[locked]")
+		}
+		b.WriteString(headerLine + "\n")
 		if len(m.Tags) > 0 {
 			b.WriteString(tagStyle.Render(strings.Join(m.Tags, ", ")) + "\n")
 		}
@@ -403,6 +410,10 @@ func (a *App) renderDetailPanel() string {
 
 const graphBarRows = 3
 
+// maxGraphMeetings caps each status graph to the most recent N meetings,
+// regardless of how many columns the panel width would otherwise fit.
+const maxGraphMeetings = 5
+
 // renderBarRows draws graphBarRows lines of block characters, one column per
 // level (tallest bars at the top), colored via colorAt(level). A zero level
 // still draws a bare dot on the bottom row rather than a blank column, so an
@@ -428,21 +439,24 @@ func renderBarRows(levels []int, colorAt func(level int) lipgloss.Color) string 
 }
 
 // metricGraphLines is renderMetricGraph's fixed line count (a label line,
-// graphBarRows bar rows, an axis line, and a date-label line), so the RAG
-// and Perceived Pulse columns always come out the same height and line up
-// cleanly when joined side by side.
-const metricGraphLines = 1 + graphBarRows + 2
+// graphBarRows bar rows, and an axis line), so the RAG and Perceived Pulse
+// columns always come out the same height and line up cleanly when joined
+// side by side.
+const metricGraphLines = 1 + graphBarRows + 1
 
 // renderMetricGraph renders one small time-series bar graph - a label line,
-// bar rows (tallest at the top), an axis line, and an oldest/newest
-// date-label line - sized to fit within maxWidth columns. It's meant to sit
-// beside a sibling metric's graph via lipgloss.JoinHorizontal, which is why
-// it always returns exactly metricGraphLines lines.
+// bar rows (tallest at the top), and an axis line - sized to fit within
+// maxWidth columns. It's meant to sit beside a sibling metric's graph via
+// lipgloss.JoinHorizontal, which is why it always returns exactly
+// metricGraphLines lines.
 func renderMetricGraph(label string, chron []store.Meeting, maxWidth int, levelOf func(store.Meeting) int, colorAt func(level int) lipgloss.Color) string {
 	const colWidth = 2 // one bar column + one gap column
 	maxCols := maxWidth / colWidth
 	if maxCols < 1 {
 		maxCols = 1
+	}
+	if maxCols > maxGraphMeetings {
+		maxCols = maxGraphMeetings
 	}
 	shown := chron
 	if len(shown) > maxCols {
@@ -461,27 +475,15 @@ func renderMetricGraph(label string, chron []store.Meeting, maxWidth int, levelO
 	axisWidth := len(levels) * colWidth
 	b.WriteString("\n" + dimItemStyle.Render(strings.Repeat("─", axisWidth)))
 
-	oldest := relDate(shown[0].Date)
-	newest := relDate(shown[len(shown)-1].Date)
-	gap := axisWidth - len(oldest) - len(newest)
-	if gap < 1 {
-		gap = 1
-	}
-	dateLabel := oldest
-	if len(shown) > 1 {
-		dateLabel += strings.Repeat(" ", gap) + newest
-	}
-	b.WriteString("\n" + dimItemStyle.Render(dateLabel))
-
 	return b.String()
 }
 
 // renderStatusGraphsPanel draws two small bar graphs of the current
 // person's meetings in chronological order (oldest to newest, left to
 // right), side by side: RAG health (green tallest, red shortest) beside
-// Perceived Pulse (up tallest, down shortest), each with its own axis and
-// date labels since halving the width also halves how many meetings each
-// graph can show.
+// Perceived Pulse (up tallest, down shortest), each with its own axis,
+// since halving the width also halves how many meetings each graph can
+// show.
 func (a *App) renderStatusGraphsPanel() string {
 	w := a.width - 4
 	if w < 10 {
@@ -637,7 +639,7 @@ func (a *App) renderHelpBar() string {
 	case panelMeetings:
 		pairs = append(pairs,
 			kv{"→/l/enter", "open meeting"}, kv{"←/h/esc", "back"},
-			kv{"r", "cycle RAG"}, kv{"n", "new meeting"}, kv{"d", "delete meeting"},
+			kv{"r", "cycle RAG"}, kv{"n", "new meeting"}, kv{"L", "lock/unlock"}, kv{"d", "delete meeting"},
 		)
 	case panelActions:
 		pairs = append(pairs,
@@ -651,7 +653,7 @@ func (a *App) renderHelpBar() string {
 		pairs = append(pairs,
 			kv{"enter/space", "cycle RAG/Pulse"}, kv{"←/h/esc", "back"},
 			kv{"w", "add win"}, kv{"n", "new action item"}, kv{"e", "edit notes"}, kv{"E", "$EDITOR"},
-			kv{"d", "delete meeting"},
+			kv{"L", "lock/unlock"}, kv{"d", "delete meeting"},
 		)
 	}
 
@@ -731,7 +733,7 @@ func (a *App) renderHelpModal() string {
 	b.WriteString(titleStyle.Render("lazy1on1 — keybindings") + "\n\n")
 	sections := [][2]string{
 		{"Navigation", "tab / shift+tab     cycle panel\n1/2/3/4/5/6         jump to People / Goals / Meetings / Actions / Global Notes / Meeting notes\n↑/k, ↓/j            move cursor within panel\nspace               confirm cursor as selection (People)\n                    (Meetings syncs the Meeting notes panel as you move, no space needed)\n→/l/enter           confirm selection and drill into panel\n←/h/esc             back out"},
-		{"People & meetings", "n   new — contextual per panel:\n      People        new person\n      Goals         new goal (long-term or short-term)\n      Meetings      new meeting now (opens editor)\n      Actions,\n      Meeting notes quick-add an action item to the selected meeting\nd   delete — contextual per panel, always asks to confirm:\n      People        delete the selected person and all their data\n      Goals         delete the selected goal\n      Meetings,\n      Meeting notes delete the selected/current meeting\n      Actions       delete the selected action item\n      Global Notes  clear the person's global notes\nr   rename/cycle RAG — contextual per panel:\n      People        rename the selected person\n      Goals         rename the selected goal\n      Actions       rename the selected action item\n      Meetings      cycle RAG status (none→green→amber→red)"},
+		{"People & meetings", "n   new — contextual per panel:\n      People        new person\n      Goals         new goal (long-term or short-term)\n      Meetings      new meeting now (opens editor)\n      Actions,\n      Meeting notes quick-add an action item to the selected meeting\nd   delete — contextual per panel, always asks to confirm:\n      People        delete the selected person and all their data\n      Goals         delete the selected goal\n      Meetings,\n      Meeting notes delete the selected/current meeting\n      Actions       delete the selected action item\n      Global Notes  clear the person's global notes\nr   rename/cycle RAG — contextual per panel:\n      People        rename the selected person\n      Goals         rename the selected goal\n      Actions       rename the selected action item\n      Meetings      cycle RAG status (none→green→amber→red)\nL   lock/unlock — Meetings, Meeting notes:\n      toggle the selected/current meeting's locked state. A locked\n      meeting shows \"(locked)\"/\"[locked]\" and rejects RAG/Pulse\n      changes, notes edits, action items/wins, and deletion — from\n      any panel, including action items reached via the Actions\n      panel — until unlocked again."},
 		{"Meeting notes panel", "↑↓/jk       move between the RAG row, Perceived Pulse row, and notes body\n            (scrolls once the cursor reaches the notes)\nenter/space cycle the selected row's value:\n              RAG              none→green→amber→red\n              Perceived Pulse  none→down→steady→up\nw           log a win since the last 1:1 (appended under \"## Wins\")"},
 		{"Global Notes panel", "a free-form, per-person notes block that persists across all of that\nperson's meetings — unlike Meeting notes, which belong to one meeting.\n↑↓/jk       scroll"},
 		{"Notes", "e   edit notes inline — the selected meeting's notes, or the Global\n    Notes panel's notes if that panel has focus\nE   edit in $EDITOR (same target as e)"},

@@ -204,6 +204,7 @@ func (s *Store) loadMeeting(personSlug, path string) (Meeting, error) {
 	m.RAG = RAG(fm["rag"])
 	m.PerceivedPulse = PerceivedPulse(fm["pulse"])
 	m.Tags = splitList(fm["tags"])
+	m.Locked = fm["locked"] == "true"
 	m.BodyLines = strings.Split(strings.TrimRight(body, "\n"), "\n")
 	m.ActionItems = parseActionItems(m.BodyLines)
 	return m, nil
@@ -266,6 +267,7 @@ func (s *Store) SaveMeeting(m *Meeting) error {
 	fmt.Fprintf(&b, "rag: %s\n", string(m.RAG))
 	fmt.Fprintf(&b, "pulse: %s\n", string(m.PerceivedPulse))
 	fmt.Fprintf(&b, "tags: %s\n", joinList(m.Tags))
+	fmt.Fprintf(&b, "locked: %t\n", m.Locked)
 	b.WriteString("---\n")
 	b.WriteString(m.Body())
 	if !strings.HasSuffix(b.String(), "\n") {
@@ -276,23 +278,49 @@ func (s *Store) SaveMeeting(m *Meeting) error {
 
 // DeleteMeeting permanently removes a single meeting's markdown file.
 func (s *Store) DeleteMeeting(m Meeting) error {
+	if m.Locked {
+		return errMeetingLocked
+	}
 	return os.Remove(m.Path)
+}
+
+// errMeetingLocked is returned by every mutation below except SetLocked
+// itself once a meeting has been locked, so a locked entry can't be edited,
+// have action items or wins added/changed, or be deleted until it's
+// unlocked again.
+var errMeetingLocked = fmt.Errorf("meeting is locked — unlock it first")
+
+// SetLocked updates and persists a meeting's locked state. Unlike every
+// other setter here, it never checks m.Locked itself - otherwise a locked
+// meeting could never be unlocked.
+func (s *Store) SetLocked(m *Meeting, locked bool) error {
+	m.Locked = locked
+	return s.SaveMeeting(m)
 }
 
 // SetRAG updates and persists a meeting's RAG status.
 func (s *Store) SetRAG(m *Meeting, rag RAG) error {
+	if m.Locked {
+		return errMeetingLocked
+	}
 	m.RAG = rag
 	return s.SaveMeeting(m)
 }
 
 // SetPerceivedPulse updates and persists a meeting's perceived-pulse status.
 func (s *Store) SetPerceivedPulse(m *Meeting, pulse PerceivedPulse) error {
+	if m.Locked {
+		return errMeetingLocked
+	}
 	m.PerceivedPulse = pulse
 	return s.SaveMeeting(m)
 }
 
 // ToggleActionItem flips a checklist line's done state and persists it.
 func (s *Store) ToggleActionItem(m *Meeting, lineNo int) error {
+	if m.Locked {
+		return errMeetingLocked
+	}
 	if lineNo < 0 || lineNo >= len(m.BodyLines) {
 		return fmt.Errorf("line %d out of range", lineNo)
 	}
@@ -303,6 +331,9 @@ func (s *Store) ToggleActionItem(m *Meeting, lineNo int) error {
 
 // AddActionItem appends a new open action item to the meeting notes.
 func (s *Store) AddActionItem(m *Meeting, text string) error {
+	if m.Locked {
+		return errMeetingLocked
+	}
 	text = strings.TrimSpace(text)
 	if text == "" {
 		return nil
@@ -316,6 +347,9 @@ func (s *Store) AddActionItem(m *Meeting, text string) error {
 // ToggleActionItem/DeleteActionItem, which flip or remove it) and persists
 // the result.
 func (s *Store) RenameActionItem(m *Meeting, lineNo int, newText string) error {
+	if m.Locked {
+		return errMeetingLocked
+	}
 	newText = strings.TrimSpace(newText)
 	if newText == "" {
 		return fmt.Errorf("text cannot be empty")
@@ -332,6 +366,9 @@ func (s *Store) RenameActionItem(m *Meeting, lineNo int, newText string) error {
 // ToggleActionItem, which only flips its done state) and persists the
 // result.
 func (s *Store) DeleteActionItem(m *Meeting, lineNo int) error {
+	if m.Locked {
+		return errMeetingLocked
+	}
 	if lineNo < 0 || lineNo >= len(m.BodyLines) {
 		return fmt.Errorf("line %d out of range", lineNo)
 	}
@@ -348,6 +385,9 @@ func (s *Store) DeleteActionItem(m *Meeting, lineNo int) error {
 // "## Wins" heading ahead of "## Action Items" (see appendWin) shifts the
 // line numbers those items are indexed by.
 func (s *Store) AddWin(m *Meeting, text string) error {
+	if m.Locked {
+		return errMeetingLocked
+	}
 	text = strings.TrimSpace(text)
 	if text == "" {
 		return nil
@@ -432,6 +472,9 @@ func (s *Store) DeleteGoal(p Person, lineNo int) error {
 // UpdateBody replaces a meeting's notes body (e.g. after inline editing) and
 // persists it.
 func (s *Store) UpdateBody(m *Meeting, newBody string) error {
+	if m.Locked {
+		return errMeetingLocked
+	}
 	m.BodyLines = strings.Split(strings.TrimRight(newBody, "\n"), "\n")
 	m.ActionItems = parseActionItems(m.BodyLines)
 	return s.SaveMeeting(m)

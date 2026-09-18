@@ -15,6 +15,7 @@ type keyMap struct {
 	EditExternal key.Binding
 	Rename       key.Binding
 	CycleRAG     key.Binding
+	Lock         key.Binding
 	ToggleItem   key.Binding
 	Help         key.Binding
 	Quit         key.Binding
@@ -33,6 +34,7 @@ var keys = keyMap{
 	EditExternal: key.NewBinding(key.WithKeys("E"), key.WithHelp("E", "edit in $EDITOR")),
 	Rename:       key.NewBinding(key.WithKeys("r"), key.WithHelp("r", "rename")),
 	CycleRAG:     key.NewBinding(key.WithKeys("r"), key.WithHelp("r", "cycle RAG")),
+	Lock:         key.NewBinding(key.WithKeys("L"), key.WithHelp("L", "lock/unlock meeting")),
 	ToggleItem:   key.NewBinding(key.WithKeys(" "), key.WithHelp("space", "toggle item")),
 	Help:         key.NewBinding(key.WithKeys("?"), key.WithHelp("?", "help")),
 	Quit:         key.NewBinding(key.WithKeys("q", "ctrl+c"), key.WithHelp("q", "quit")),

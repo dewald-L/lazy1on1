@@ -141,6 +141,11 @@ var (
 	tagStyle = lipgloss.NewStyle().Foreground(colorAccent)
 
 	errStyle = lipgloss.NewStyle().Foreground(colorRed).Bold(true)
+
+	// lockedBadgeStyle marks a locked meeting, reusing the RAG amber (rather
+	// than red) since a lock is a deliberate, reversible restriction, not a
+	// warning.
+	lockedBadgeStyle = lipgloss.NewStyle().Foreground(colorAmber).Bold(true)
 )
 
 func ragGlyphChar(rag string) string {

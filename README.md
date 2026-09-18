@@ -105,7 +105,8 @@ titled **Detail** — spans the full width along the bottom.
   (per-person, so it stays the same as you switch between that person's
   meetings).
 - **Meetings** — every dated session with the selected person, most recent
-  first, with a RAG dot and an open-action-item count.
+  first, with a RAG dot, an open-action-item count, and `(locked)` for any
+  meeting that's been locked.
 - **Actions** — every action item across all of the selected person's
   meetings, most recent meeting first, each one showing which meeting it
   came from.
@@ -171,6 +172,7 @@ Global, from any panel:
 | `→`/`l`/`enter` | Open the selected meeting |
 | `←`/`h`/`esc` | Back to People |
 | `n` | Start a new meeting right now, and jump straight into notes |
+| `L` | Lock/unlock the selected meeting |
 | `d` | Delete the selected meeting |
 
 **Actions** panel:
@@ -205,12 +207,25 @@ to any meeting):
 | `e` | Edit notes inline (small built-in editor) |
 | `E` | Edit the meeting file in `$EDITOR` |
 | `n` | Quick-add an action item to the selected meeting |
+| `L` | Lock/unlock the current meeting |
 | `d` | Delete the currently selected meeting |
 
 While either inline notes editor is open: `ctrl+s` saves, `esc` discards.
 
 Deleting anything (`d`) always opens a confirmation prompt first: `y`/`enter`
 confirms, `esc`/`n` cancels.
+
+## Locking a meeting
+
+`L` toggles a lock on the currently selected meeting, from either the
+Meetings panel or the Meeting notes panel. A locked meeting is marked
+`(locked)` in the Meetings list and `[locked]` in the Meeting notes header,
+and rejects every other mutation until it's unlocked again: RAG/Perceived
+Pulse changes, editing notes (inline or in `$EDITOR`), adding/renaming/
+toggling/deleting its action items or wins (including from the Actions
+panel), and deleting the meeting itself. It's meant for sessions you want to
+treat as a finished, frozen record — lock it once you're done, unlock with
+`L` again if you need to fix something.
 
 ## What "RAG" and "Perceived Pulse" mean here
 
