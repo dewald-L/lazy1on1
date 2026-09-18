@@ -231,18 +231,18 @@ func (a *App) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		a.setFocus(panelPeople)
 		return a, nil
 	case isKey(msg, "2"):
-		a.setFocus(panelGoals)
-		return a, nil
-	case isKey(msg, "3"):
-		a.setFocus(panelMeetings)
-		return a, nil
-	case isKey(msg, "4"):
-		a.setFocus(panelActions)
-		return a, nil
-	case isKey(msg, "5"):
 		a.setFocus(panelGlobalNotes)
 		return a, nil
-	case isKey(msg, "6"):
+	case isKey(msg, "3"):
+		a.setFocus(panelGoals)
+		return a, nil
+	case isKey(msg, "4"):
+		a.setFocus(panelMeetings)
+		return a, nil
+	case isKey(msg, "5"):
+		a.setFocus(panelActions)
+		return a, nil
+	case isKey(msg, "0"):
 		a.setFocus(panelDetail)
 		return a, nil
 	case isKey(msg, "e"):

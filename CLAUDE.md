@@ -36,7 +36,7 @@ go test ./...             # test (internal/store only, currently)
   independent hand-written switches, not generated from one table — when
   adding or changing a contextual key, update all three together or the
   on-screen hints will drift from actual behavior.
-- Panel numbering (`1`-`6` jump keys, `tab`/`shift+tab` cycling) is a fixed
+- Panel numbering (`1`-`5`/`0` jump keys, `tab`/`shift+tab` cycling) is a fixed
   `panelID` enum in `model.go`; adding/removing/reordering a panel means
   updating the enum, `keys.FocusPanel`'s key list, the jump-key `case`s and
   the tab modulo in `update.go`'s `handleKey`, together — they don't derive

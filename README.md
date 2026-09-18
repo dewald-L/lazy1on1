@@ -110,11 +110,11 @@ titled **Detail** — spans the full width along the bottom.
 - **Actions** — every action item across all of the selected person's
   meetings, most recent meeting first, each one showing which meeting it
   came from.
-- **Global Notes** (right, top, keyboard-focusable — `5`) — free-form notes
+- **Global Notes** (right, top, keyboard-focusable — `2`) — free-form notes
   about the selected person that persist across all of their meetings, not
   tied to any single one (e.g. background, career context, running
   observations). Separate from a meeting's own notes below it.
-- **Meeting notes** (right, bottom, keyboard-focusable — `6`) — the selected
+- **Meeting notes** (right, bottom, keyboard-focusable — `0`) — the selected
   meeting's RAG and Perceived Pulse status (interactive header rows), wins
   since the last 1:1, and that meeting's own notes.
 - **Detail** (bottom, always visible) — RAG and Perceived Pulse over time
@@ -140,7 +140,7 @@ Global, from any panel:
 | Key | Action |
 |---|---|
 | `tab` / `shift+tab` | Cycle focus between panels |
-| `1` / `2` / `3` / `4` / `5` / `6` | Jump straight to People / Goals / Meetings / Actions / Global Notes / Meeting notes |
+| `1` / `2` / `3` / `4` / `5` / `0` | Jump straight to People / Global Notes / Goals / Meetings / Actions / Meeting notes |
 | `r` | Cycle the selected meeting's RAG status: none → green → amber → red |
 | `?` | Help |
 | `q` / `ctrl+c` | Quit |

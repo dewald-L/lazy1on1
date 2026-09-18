@@ -15,10 +15,10 @@ type panelID int
 
 const (
 	panelPeople panelID = iota
+	panelGlobalNotes
 	panelGoals
 	panelMeetings
 	panelActions
-	panelGlobalNotes
 	panelDetail
 )
 

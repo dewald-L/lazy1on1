@@ -29,7 +29,7 @@ var keys = keyMap{
 	Left:         key.NewBinding(key.WithKeys("left", "h", "esc"), key.WithHelp("←/h/esc", "back")),
 	Right:        key.NewBinding(key.WithKeys("right", "l", "enter"), key.WithHelp("→/l/enter", "drill in")),
 	Tab:          key.NewBinding(key.WithKeys("tab"), key.WithHelp("tab", "next panel")),
-	FocusPanel:   key.NewBinding(key.WithKeys("1", "2", "3", "4", "5", "6"), key.WithHelp("1/2/3/4/5/6", "jump to panel")),
+	FocusPanel:   key.NewBinding(key.WithKeys("1", "2", "3", "4", "5", "0"), key.WithHelp("1/2/3/4/5/0", "jump to panel")),
 	Edit:         key.NewBinding(key.WithKeys("e"), key.WithHelp("e", "edit notes")),
 	EditExternal: key.NewBinding(key.WithKeys("E"), key.WithHelp("E", "edit in $EDITOR")),
 	Rename:       key.NewBinding(key.WithKeys("r"), key.WithHelp("r", "rename")),
