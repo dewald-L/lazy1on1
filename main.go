@@ -3,9 +3,10 @@
 // track a RAG (red/amber/green) status per session, and keep a running list
 // of action items across everyone you meet with.
 //
-// Data is stored as plain markdown files under -dir (default
-// ~/.onetoones or $ONETOONES_DIR), one folder per person and one file per
-// meeting, so it stays readable, greppable, and easy to back up with git.
+// Data is stored as plain markdown files under -dir (default: a "data"
+// folder next to the oto binary, or $ONETOONES_DIR), one folder per person
+// and one file per meeting, so it stays readable, greppable, and easy to
+// back up with git.
 package main
 
 import (
@@ -24,11 +25,14 @@ func defaultDir() string {
 	if d := os.Getenv("ONETOONES_DIR"); d != "" {
 		return d
 	}
-	home, err := os.UserHomeDir()
+	exe, err := os.Executable()
 	if err != nil {
-		return ".onetoones"
+		return "data"
 	}
-	return filepath.Join(home, ".onetoones")
+	if resolved, err := filepath.EvalSymlinks(exe); err == nil {
+		exe = resolved
+	}
+	return filepath.Join(filepath.Dir(exe), "data")
 }
 
 func main() {

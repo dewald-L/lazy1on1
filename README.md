@@ -13,7 +13,7 @@ Every person and meeting is a plain markdown file on disk. Nothing is locked
 in a database:
 
 ```
-~/.onetoones/
+data/
   jane-doe/
     person.yaml              # name / role / cadence
     goals.md                 # long-term / short-term goal checklist
@@ -30,7 +30,7 @@ directory under git for history and backup, or edit a file by hand in your
 usual editor — `oto` will pick up the change next time it reads the file.
 
 Override the data directory with `-dir` or the `ONETOONES_DIR` environment
-variable; it defaults to `~/.onetoones`.
+variable; it defaults to a `data` folder next to the `oto` binary.
 
 ## A meeting file
 
@@ -85,7 +85,7 @@ meeting's own notes.
 
 ```sh
 go build -o oto .
-./oto                      # uses ~/.onetoones
+./oto                      # uses ./data, next to the binary
 ./oto -dir ./my-1-1-notes  # or point it somewhere else
 ```
 

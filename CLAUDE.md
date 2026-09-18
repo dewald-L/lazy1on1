@@ -9,7 +9,7 @@ Lazygit-style terminal UI (Bubble Tea) for continuous 1:1 note taking. See
 go build -o oto .   # build
 go vet ./...         # vet
 go test ./...        # test (internal/store only, currently)
-./oto -dir ./tmp     # run against a scratch data dir instead of ~/.onetoones
+./oto -dir ./tmp     # run against a scratch data dir instead of the default ./data
 ```
 
 ## Architecture
