@@ -132,7 +132,7 @@ func (a *App) detailHeight() int {
 }
 
 // peopleHeight, goalsHeight, actionsHeight and meetingsHeight split the left
-// column's vertical space between the People, Goals, Meetings and Actions
+// column's vertical space between the People, Meetings, Goals and Actions
 // panels, lazygit-sidebar style: four panels stacked in one column, each
 // with its own border, so all four borders come out of the shared budget.
 // People and Goals get a smaller fixed share since their rows are short;
@@ -231,13 +231,13 @@ func (a *App) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		a.setFocus(panelPeople)
 		return a, nil
 	case isKey(msg, "2"):
-		a.setFocus(panelGlobalNotes)
+		a.setFocus(panelMeetings)
 		return a, nil
 	case isKey(msg, "3"):
-		a.setFocus(panelGoals)
+		a.setFocus(panelGlobalNotes)
 		return a, nil
 	case isKey(msg, "4"):
-		a.setFocus(panelMeetings)
+		a.setFocus(panelGoals)
 		return a, nil
 	case isKey(msg, "5"):
 		a.setFocus(panelActions)

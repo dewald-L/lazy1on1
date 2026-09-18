@@ -19,7 +19,7 @@ go test ./...             # test (internal/store only, currently)
 - `internal/store/` — markdown + front-matter persistence, action-item
   parsing, cross-person aggregation. No UI concerns.
 - `internal/ui/` — Bubble Tea model/update/view for the six-panel layout:
-  People / Goals / Meetings / Actions stacked in a left sidebar; Global
+  People / Meetings / Goals / Actions stacked in a left sidebar; Global
   Notes (per-person, not tied to any meeting) stacked above Meeting notes
   (per-meeting notes; on-screen label "Meeting notes", but the panel's
   internal identifiers — `panelDetail`, `renderDetailPanel`, `syncDetail`,

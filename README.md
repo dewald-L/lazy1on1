@@ -94,23 +94,23 @@ terminal and (optionally) `$EDITOR` for full external editing.
 
 ## Layout
 
-Like lazygit's multi-pane layout: **People**, **Goals**, **Meetings** and
+Like lazygit's multi-pane layout: **People**, **Meetings**, **Goals** and
 **Actions** stack vertically in a left-hand sidebar (like lazygit's Branches
 panel sitting above its Commits panel). To the right, **Global Notes** stacks
 above **Meeting notes**, filling the rest of the width. A third panel —
 titled **Detail** — spans the full width along the bottom.
 
 - **People** — everyone you have recurring 1:1s with.
-- **Goals** — the selected person's Long-term / Short-term goals checklist
-  (per-person, so it stays the same as you switch between that person's
-  meetings).
 - **Meetings** — every dated session with the selected person, most recent
   first, with a RAG dot, an open-action-item count, and `(locked)` for any
   meeting that's been locked.
+- **Goals** — the selected person's Long-term / Short-term goals checklist
+  (per-person, so it stays the same as you switch between that person's
+  meetings).
 - **Actions** — every action item across all of the selected person's
   meetings, most recent meeting first, each one showing which meeting it
   came from.
-- **Global Notes** (right, top, keyboard-focusable — `2`) — free-form notes
+- **Global Notes** (right, top, keyboard-focusable — `3`) — free-form notes
   about the selected person that persist across all of their meetings, not
   tied to any single one (e.g. background, career context, running
   observations). Separate from a meeting's own notes below it.
@@ -126,7 +126,7 @@ The bottom help bar is contextual, lazygit-style: it always leads with the
 keys that do something in whichever panel currently has focus, followed by
 the keys that work no matter where focus is. `n` ("new") is the clearest
 example: it has no global meaning of its own and only exists per panel —
-new person in People, new goal in Goals, new meeting in Meetings, quick-add
+new person in People, new meeting in Meetings, new goal in Goals, quick-add
 an action item in Actions/Meeting notes — see the per-panel tables below. `e`/`E`
 ("edit notes" / edit in `$EDITOR`) work the same way: they edit the Global
 Notes panel's notes when that panel has focus, and the selected meeting's
@@ -140,7 +140,7 @@ Global, from any panel:
 | Key | Action |
 |---|---|
 | `tab` / `shift+tab` | Cycle focus between panels |
-| `1` / `2` / `3` / `4` / `5` / `0` | Jump straight to People / Global Notes / Goals / Meetings / Actions / Meeting notes |
+| `1` / `2` / `3` / `4` / `5` / `0` | Jump straight to People / Meetings / Global Notes / Goals / Actions / Meeting notes |
 | `r` | Cycle the selected meeting's RAG status: none → green → amber → red |
 | `?` | Help |
 | `q` / `ctrl+c` | Quit |
@@ -154,16 +154,6 @@ Global, from any panel:
 | `n` | Add a new person |
 | `d` | Delete the selected person (and all their meetings, goals, notes) |
 
-**Goals** panel:
-
-| Key | Action |
-|---|---|
-| `↑`/`k`, `↓`/`j` | Move between goals |
-| `space` | Toggle the selected goal done/open |
-| `←`/`h`/`esc` | Back to People |
-| `n` | Add a goal to the selected person (long-term or short-term) |
-| `d` | Delete the selected goal |
-
 **Meetings** panel:
 
 | Key | Action |
@@ -174,6 +164,16 @@ Global, from any panel:
 | `n` | Start a new meeting right now, and jump straight into notes |
 | `L` | Lock/unlock the selected meeting |
 | `d` | Delete the selected meeting |
+
+**Goals** panel:
+
+| Key | Action |
+|---|---|
+| `↑`/`k`, `↓`/`j` | Move between goals |
+| `space` | Toggle the selected goal done/open |
+| `←`/`h`/`esc` | Back to People |
+| `n` | Add a goal to the selected person (long-term or short-term) |
+| `d` | Delete the selected goal |
 
 **Actions** panel:
 
