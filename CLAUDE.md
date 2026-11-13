@@ -8,7 +8,7 @@ Lazygit-style terminal UI (Bubble Tea) for continuous 1:1 note taking. See
 ```sh
 go build -o lazy1on1 .   # build
 go vet ./...              # vet
-go test ./...             # test (internal/store only, currently)
+go test ./...             # test (internal/store and dockplugin's Summary)
 ./lazy1on1 -dir ./tmp     # run against a scratch data dir instead of the default ./data
 ```
 
@@ -29,7 +29,12 @@ go test ./...             # test (internal/store only, currently)
   min 70x24). Under dock, data lives in dock's plugin data dir
   (`ctx.DataDir`, ~/.local/share/dock/lazy1on1), not the standalone `data/`
   folder or `$ONETOONES_DIR`. `Plugin.Dir` overrides it (main sets it for
-  standalone).
+  standalone). `summary.go` is dock's home screen `plugin.Summarizer` (on the
+  Plugin value): open action items across everyone, and whose 1:1 is due next
+  (last meeting + `cadence_days`; never met = "first one"), warn when overdue.
+  It runs off the UI goroutine, possibly while lazy1on1 is open: read-only
+  through `store`, never `EnsureRoot`. Tests call `summary(store, now)` on
+  temp dirs.
 - Embedded mode (`App.embedded`, set unless Standalone): our status and help
   bars are hidden (`helpBarHeight()`/`statusBarHeight()` return 0).
   `Update` wraps `update` and forwards `status`/`errMsg` to dock

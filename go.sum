@@ -26,8 +26,8 @@ github.com/clipperhouse/stringish v0.1.1 h1:+NSqMOr3GR6k1FdRhhnXrLfztGzuG+VuFDfa
 github.com/clipperhouse/stringish v0.1.1/go.mod h1:v/WhFtE1q0ovMta2+m+UbpZ+2/HEXNWYXQgCt4hdOzA=
 github.com/clipperhouse/uax29/v2 v2.5.0 h1:x7T0T4eTHDONxFJsL94uKNKPHrclyFI0lm7+w94cO8U=
 github.com/clipperhouse/uax29/v2 v2.5.0/go.mod h1:Wn1g7MK6OoeDT0vL+Q0SQLDz/KpfsVRgg6W7ihQeh4g=
-github.com/dewald-L/dock v0.0.0-20261113063804-84f5413ef42f h1:3RMwnJWIASK/bQFWwdzodep767KLQi5VqHh6d4dypzo=
-github.com/dewald-L/dock v0.0.0-20261113063804-84f5413ef42f/go.mod h1:qN8gIC9jPZY1vPecL8hM5Sivd9ofzfAIRRsYfYgTJWY=
+github.com/dewald-L/dock v0.0.0-20261113073416-9334fe79ac60 h1:B3cSbLI9ku1ADuK2Cx88zPIH3dRztd5eJYR2B7Ki9h4=
+github.com/dewald-L/dock v0.0.0-20261113073416-9334fe79ac60/go.mod h1:qN8gIC9jPZY1vPecL8hM5Sivd9ofzfAIRRsYfYgTJWY=
 github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f h1:Y/CXytFA4m6baUTXGLOoWe4PQhGxaX0KpnayAqC48p4=
 github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f/go.mod h1:vw97MGsxSvLiUE2X8qFplwetxpGLQrlU1Q9AUEIzCaM=
 github.com/golang/exp v0.0.0-20231006140011-7918f672742d h1:c1Prs2dBXrEtAWl9wab3IDubd0A0yxiy/V+Ajj8KWcM=

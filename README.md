@@ -104,8 +104,11 @@ dock plugin install github.com/dewald-L/lazy1on1/dockplugin
 dock plugin install --path . github.com/dewald-L/lazy1on1/dockplugin
 ```
 
-Then run `dock lazy1on1`, or open it from
-dock's launcher or palette. Inside dock:
+Then run `dock lazy1on1`, or open it from dock's home screen (its number
+key, or select its block and press enter) or palette. On the home screen its
+block shows the open action items across everyone and whose 1:1 is due next
+by their cadence (`4 open action items · 2 people`, `Next 1:1: Ana, 3 days
+overdue`), with a warning dot when a 1:1 is overdue. Inside dock:
 
 - Notes live in dock's plugin data directory
   (`~/.local/share/dock/lazy1on1`), separate from the standalone `data/`
@@ -274,7 +277,8 @@ diverge for the selected person.
 ```
 main.go                   entry point, flag/env handling (runs the dock
                             plugin standalone via plugin.RunStandalone)
-dockplugin/               the dock plugin: manifest, data dir, embedding
+dockplugin/               the dock plugin: manifest, data dir, embedding,
+                            home screen Summary
 internal/store/            markdown + frontmatter persistence, action-item
                             and goal checklist parsing, cross-person
                             aggregation (no external YAML dependency — the
