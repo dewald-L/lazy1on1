@@ -7,7 +7,7 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 
-	"lazy1on1/internal/store"
+	"github.com/dewald-L/lazy1on1/internal/store"
 )
 
 func (a *App) View() string {
@@ -33,7 +33,10 @@ func (a *App) View() string {
 		right,
 	)
 
-	view := lipgloss.JoinVertical(lipgloss.Left, body, a.renderStatusGraphsPanel(), a.renderStatusBar(), a.renderHelpBar())
+	view := lipgloss.JoinVertical(lipgloss.Left, body, a.renderStatusGraphsPanel())
+	if !a.embedded {
+		view = lipgloss.JoinVertical(lipgloss.Left, view, a.renderStatusBar(), a.renderHelpBar())
+	}
 
 	switch a.modal {
 	case modalNewPerson:
@@ -593,38 +596,32 @@ func (a *App) renderStatusBar() string {
 	return style.Width(a.width).Render(content)
 }
 
-// renderHelpBar builds a lazygit-style contextual footer: keys that only do
-// something in the currently focused panel/section come first, followed by
-// the keys that work no matter what has focus.
+type kv struct{ k, v string }
+
+// renderHelpBar builds a lazygit-style contextual footer from helpPairs.
+// Not shown when embedded in dock: the host renders Help() instead.
 func (a *App) renderHelpBar() string {
-	type kv struct{ k, v string }
+	var parts []string
+	for _, p := range a.helpPairs() {
+		parts = append(parts, helpKeyStyle.Render(p.k)+" "+p.v)
+	}
+	return helpBarStyle.Width(a.width).Render(strings.Join(parts, "  "))
+}
+
+// helpPairs lists the keys for the current context: keys that only do
+// something in the currently focused panel/section come first, followed by
+// the keys that work no matter what has focus. It feeds both the help bar
+// (standalone) and Help() (embedded in dock).
+func (a *App) helpPairs() []kv {
 	var pairs []kv
 
-	if a.modal == modalEditNotes || a.modal == modalEditGlobalNotes {
-		pairs = append(pairs, kv{"ctrl+s", "save"}, kv{"esc", "cancel"})
-		var parts []string
-		for _, p := range pairs {
-			parts = append(parts, helpKeyStyle.Render(p.k)+" "+p.v)
-		}
-		return helpBarStyle.Width(a.width).Render(strings.Join(parts, "  "))
-	}
-
-	if a.modal == modalConfirmDelete {
-		pairs = append(pairs, kv{"y/enter", "confirm"}, kv{"esc/n", "cancel"})
-		var parts []string
-		for _, p := range pairs {
-			parts = append(parts, helpKeyStyle.Render(p.k)+" "+p.v)
-		}
-		return helpBarStyle.Width(a.width).Render(strings.Join(parts, "  "))
-	}
-
-	if a.modal == modalRename {
-		pairs = append(pairs, kv{"enter", "save"}, kv{"esc", "cancel"})
-		var parts []string
-		for _, p := range pairs {
-			parts = append(parts, helpKeyStyle.Render(p.k)+" "+p.v)
-		}
-		return helpBarStyle.Width(a.width).Render(strings.Join(parts, "  "))
+	switch a.modal {
+	case modalEditNotes, modalEditGlobalNotes:
+		return append(pairs, kv{"ctrl+s", "save"}, kv{"esc", "cancel"})
+	case modalConfirmDelete:
+		return append(pairs, kv{"y/enter", "confirm"}, kv{"esc/n", "cancel"})
+	case modalRename:
+		return append(pairs, kv{"enter", "save"}, kv{"esc", "cancel"})
 	}
 
 	switch a.focus {
@@ -657,16 +654,18 @@ func (a *App) renderHelpBar() string {
 		)
 	}
 
-	pairs = append(pairs,
+	return append(pairs,
 		kv{"tab", "panel"},
-		kv{"?", "help"}, kv{"q", "quit"},
+		kv{"?", "help"}, kv{"q", a.quitWord()},
 	)
+}
 
-	var parts []string
-	for _, p := range pairs {
-		parts = append(parts, helpKeyStyle.Render(p.k)+" "+p.v)
+// quitWord is what "q" does: quit the program, or close the dock plugin.
+func (a *App) quitWord() string {
+	if a.embedded {
+		return "close"
 	}
-	return helpBarStyle.Width(a.width).Render(strings.Join(parts, "  "))
+	return "quit"
 }
 
 // --- modals -------------------------------------------------------------
@@ -740,6 +739,9 @@ func (a *App) renderHelpModal() string {
 		{"Action items", "space toggle selected action item in the Actions panel"},
 		{"Goals", "space toggle selected goal in the Goals panel"},
 		{"Misc", "?   toggle this help\nq / ctrl+c   quit"},
+	}
+	if a.embedded {
+		sections[len(sections)-1][1] = "?   toggle this help\nq   close lazy1on1 (ctrl+c quits dock)"
 	}
 	for _, s := range sections {
 		b.WriteString(panelTitleStyle.Render(s[0]) + "\n")

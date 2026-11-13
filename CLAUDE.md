@@ -14,8 +14,31 @@ go test ./...             # test (internal/store only, currently)
 
 ## Architecture
 
-- `main.go` — flag/env parsing (`-dir`, `ONETOONES_DIR`), wires `store` into
-  the Bubble Tea program.
+- Module `github.com/dewald-L/lazy1on1` (was `oto`). It depends on
+  `github.com/dewald-L/dock/plugin` at a published commit (bump it with
+  `go get github.com/dewald-L/dock@<commit>`). To develop against unpushed dock
+  changes, use a temporary `go.work`, not a committed replace. dock does not import
+  lazy1on1. `dockplugin`'s `init()` calls `plugin.Register`, and dock compiles
+  it in with `dock plugin install [--path ~/Projects/oto]
+  github.com/dewald-L/lazy1on1/dockplugin`. After changing the plugin, run
+  `dock build`.
+- `main.go` — flag/env parsing (`-dir`, `ONETOONES_DIR`). Runs
+  `dockplugin.Plugin{Standalone: true}` through `plugin.RunStandalone`, so
+  standalone and dock share one code path.
+- `dockplugin/` — the dock plugin (id `lazy1on1`, DisplayFull, Persistent,
+  min 70x24). Under dock, data lives in dock's plugin data dir
+  (`ctx.DataDir`, ~/.local/share/dock/lazy1on1), not the standalone `data/`
+  folder or `$ONETOONES_DIR`. `Plugin.Dir` overrides it (main sets it for
+  standalone).
+- Embedded mode (`App.embedded`, set unless Standalone): our status and help
+  bars are hidden (`helpBarHeight()`/`statusBarHeight()` return 0).
+  `Update` wraps `update` and forwards `status`/`errMsg` to dock
+  (`plugin.Notify`/`plugin.Error`), then clears them. It also sends
+  `plugin.SetTitle` when the selected person changes. `internal/ui/dock.go`
+  holds `Help()` (built from `helpPairs`) and the palette `Commands()`.
+  `$EDITOR` runs through `plugin.Exec`, never `tea.ExecProcess`, because the
+  host must route the result back. Don't call `tea.NewProgram` or touch the
+  terminal from `ui`; see ../dock/docs/PLUGINS.md.
 - `internal/store/` — markdown + front-matter persistence, action-item
   parsing, cross-person aggregation. No UI concerns.
 - `internal/ui/` — Bubble Tea model/update/view for the six-panel layout:
@@ -29,9 +52,10 @@ go test ./...             # test (internal/store only, currently)
 - Contextual keys and hints: some keys (e.g. `n`, the "new X for this panel"
   key, and `e`/`E`, "edit notes") dispatch on `a.focus` in `update.go`
   rather than doing one fixed thing — see `newForFocus` and
-  `editForFocus`/`editExternalForFocus`. The bottom help bar
-  (`renderHelpBar` in `view.go`) mirrors that same `a.focus` switch to show
-  the right hint per panel, and `renderHelpModal` documents it in the full
+  `editForFocus`/`editExternalForFocus`. The key hints (`helpPairs` in
+  `view.go`, which feeds both the standalone help bar and dock's `Help()`)
+  mirror that same `a.focus` switch to show the right hint per panel, and
+  `renderHelpModal` documents it in the full
   `?` help screen. These three places (dispatch, help bar, help modal) are
   independent hand-written switches, not generated from one table — when
   adding or changing a contextual key, update all three together or the

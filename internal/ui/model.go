@@ -8,7 +8,7 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 
-	"lazy1on1/internal/store"
+	"github.com/dewald-L/lazy1on1/internal/store"
 )
 
 type panelID int
@@ -115,7 +115,17 @@ type App struct {
 
 	status string
 	errMsg string
+
+	// embedded is set when running as a dock plugin: the host's status bar
+	// replaces ours (status/errMsg become host notifications, see Update),
+	// key hints come from Help(), and "q" closes the plugin instead of
+	// quitting a program.
+	embedded bool
+	title    string // last tab title sent to the host
 }
+
+// SetEmbedded switches the App into dock-plugin mode (see App.embedded).
+func (a *App) SetEmbedded(on bool) { a.embedded = on }
 
 func New(s *store.Store) *App {
 	ni := textinput.New()

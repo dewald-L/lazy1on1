@@ -7,6 +7,10 @@
 // folder next to the lazy1on1 binary, or $ONETOONES_DIR), one folder per person
 // and one file per meeting, so it stays readable, greppable, and easy to
 // back up with git.
+//
+// The same UI also runs as a plugin inside the dock terminal host; see the
+// dockplugin package. Under dock it keeps its notes in dock's plugin data
+// directory instead.
 package main
 
 import (
@@ -15,10 +19,9 @@ import (
 	"os"
 	"path/filepath"
 
-	tea "github.com/charmbracelet/bubbletea"
+	"github.com/dewald-L/dock/plugin"
 
-	"lazy1on1/internal/store"
-	"lazy1on1/internal/ui"
+	"github.com/dewald-L/lazy1on1/dockplugin"
 )
 
 func defaultDir() string {
@@ -39,15 +42,8 @@ func main() {
 	dir := flag.String("dir", defaultDir(), "directory to store people & meeting notes in")
 	flag.Parse()
 
-	s := store.New(*dir)
-	if err := s.EnsureRoot(); err != nil {
-		fmt.Fprintf(os.Stderr, "lazy1on1: could not create data directory %s: %v\n", *dir, err)
-		os.Exit(1)
-	}
-
-	app := ui.New(s)
-	p := tea.NewProgram(app, tea.WithAltScreen())
-	if _, err := p.Run(); err != nil {
+	err := plugin.RunStandalone(dockplugin.Plugin{Dir: *dir, Standalone: true}, plugin.Context{})
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "lazy1on1: %v\n", err)
 		os.Exit(1)
 	}

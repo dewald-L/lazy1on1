@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -8,14 +9,23 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/dewald-L/dock/plugin"
 
-	"lazy1on1/internal/store"
+	"github.com/dewald-L/lazy1on1/internal/store"
 )
 
 type editorFinishedMsg struct{ err error }
 
-const helpBarHeight = 1
-const statusBarHeight = 1
+// helpBarHeight and statusBarHeight are 0 when embedded in dock: the host's
+// status bar shows our messages and key hints instead.
+func (a *App) helpBarHeight() int {
+	if a.embedded {
+		return 0
+	}
+	return 1
+}
+
+func (a *App) statusBarHeight() int { return a.helpBarHeight() }
 
 // statusGraphsBoxHeight is the total rendered height (content + border) of
 // the "Detail" graph panel along the bottom of the screen: a title line,
@@ -24,8 +34,38 @@ const statusBarHeight = 1
 const statusGraphsContentHeight = 1 + metricGraphLines
 const statusGraphsBoxHeight = statusGraphsContentHeight + 2
 
+// Update handles msg. When embedded in dock it also forwards status and
+// error messages to the host's status bar and keeps the tab title in step
+// with the selected person.
 func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	m, cmd := a.update(msg)
+	if !a.embedded {
+		return m, cmd
+	}
+	cmds := []tea.Cmd{cmd}
+	if a.errMsg != "" {
+		cmds = append(cmds, plugin.Error(errors.New(a.errMsg)))
+		a.errMsg = ""
+	} else if a.status != "" {
+		cmds = append(cmds, plugin.Notify(a.status))
+	}
+	a.status = ""
+	title := "lazy1on1"
+	if p := a.currentPerson(); p != nil {
+		title = "1:1 · " + p.Name
+	}
+	if title != a.title {
+		a.title = title
+		cmds = append(cmds, plugin.SetTitle(title))
+	}
+	return m, tea.Batch(cmds...)
+}
+
+func (a *App) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+
+	case commandMsg:
+		return a.runCommand(msg)
 
 	case tea.WindowSizeMsg:
 		a.width, a.height = msg.Width, msg.Height
@@ -98,7 +138,7 @@ func leftColumnWidth() int { return 34 }
 // People/Meetings/Detail panels) before any individual panel's own border
 // is subtracted.
 func (a *App) totalBodyHeight() int {
-	h := a.height - helpBarHeight - statusBarHeight - statusGraphsBoxHeight
+	h := a.height - a.helpBarHeight() - a.statusBarHeight() - statusGraphsBoxHeight
 	if h < 5 {
 		h = 5
 	}
@@ -991,7 +1031,7 @@ func (a *App) openExternalEditor() (tea.Model, tea.Cmd) {
 		editor = "vi"
 	}
 	c := exec.Command(editor, m.Path)
-	return a, tea.ExecProcess(c, func(err error) tea.Msg {
+	return a, plugin.Exec(c, func(err error) tea.Msg {
 		return editorFinishedMsg{err: err}
 	})
 }
@@ -1039,7 +1079,7 @@ func (a *App) openExternalEditorGlobalNotes() (tea.Model, tea.Cmd) {
 	}
 	a.externalEditingGlobalNotes = true
 	c := exec.Command(editor, a.store.NotesPath(*p))
-	return a, tea.ExecProcess(c, func(err error) tea.Msg {
+	return a, plugin.Exec(c, func(err error) tea.Msg {
 		return editorFinishedMsg{err: err}
 	})
 }

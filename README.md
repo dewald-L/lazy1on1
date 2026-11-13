@@ -89,8 +89,33 @@ go build -o lazy1on1 .
 ./lazy1on1 -dir ./my-1-1-notes  # or point it somewhere else
 ```
 
-Go 1.21+ is required. There are no runtime dependencies beyond your
+Go 1.24+ is required. There are no runtime dependencies beyond your
 terminal and (optionally) `$EDITOR` for full external editing.
+
+### Inside dock
+
+lazy1on1 is also a plugin for the [dock](https://github.com/dewald-L/dock)
+terminal host (plugin id `lazy1on1`, full-screen tab). Install it into dock
+with:
+
+```sh
+dock plugin install github.com/dewald-L/lazy1on1/dockplugin
+# or from this checkout:
+dock plugin install --path . github.com/dewald-L/lazy1on1/dockplugin
+```
+
+Then run `dock lazy1on1`, or open it from
+dock's launcher or palette. Inside dock:
+
+- Notes live in dock's plugin data directory
+  (`~/.local/share/dock/lazy1on1`), separate from the standalone `data/`
+  folder. To bring standalone notes along, copy the person folders over.
+- dock's bottom bar replaces lazy1on1's status and help bars. It shows the
+  same contextual key hints and messages.
+- `q` closes the plugin (dock keeps running). `ctrl+c` quits dock.
+- The tab title follows the selected person (`1:1 · Ana`).
+- Palette (`ctrl+g :`) commands: new person, new meeting, new action
+  item, keybindings.
 
 ## Layout
 
@@ -247,7 +272,9 @@ diverge for the selected person.
 ## Project layout
 
 ```
-main.go                   entry point, flag/env handling
+main.go                   entry point, flag/env handling (runs the dock
+                            plugin standalone via plugin.RunStandalone)
+dockplugin/               the dock plugin: manifest, data dir, embedding
 internal/store/            markdown + frontmatter persistence, action-item
                             and goal checklist parsing, cross-person
                             aggregation (no external YAML dependency — the
