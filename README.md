@@ -131,7 +131,9 @@ above **Meeting notes**, filling the rest of the width. A third panel —
 titled **Detail** — spans the full width along the bottom.
 
 - **People** (centered modal, not a sidebar panel) — everyone you have
-  recurring 1:1s with. It is the home screen; reopen it with `P`.
+  recurring 1:1s with. It is the home screen; `q` from the notes view (or
+  `esc` in Meetings/Goals) goes back to it. It is a separate screen with its
+  own keys.
 - **Meetings** — every dated session with the selected person, most recent
   first, with a RAG dot, an open-action-item count, and `(locked)` for any
   meeting that's been locked.
@@ -172,11 +174,10 @@ Global, from any panel:
 | Key | Action |
 |---|---|
 | `tab` / `shift+tab` | Cycle focus between panels |
-| `P` | Open the People picker |
+| `q` | Back to the People picker (`ctrl+c` quits) |
 | `2` / `3` / `4` / `5` / `0` | Jump straight to Meetings / Global Notes / Goals / Actions / Meeting notes |
 | `r` | Cycle the selected meeting's RAG status: none → green → amber → red |
 | `?` | Help |
-| `q` / `ctrl+c` | Quit |
 
 **People** picker (modal; its keys are separate from the notes view's):
 
@@ -188,7 +189,7 @@ Global, from any panel:
 | `n` | Add a new person |
 | `r` | Rename the highlighted person |
 | `d` | Delete the highlighted person (and all their meetings, goals, notes) |
-| `esc`/`←`/`h`/`q` | Close the picker |
+| `q` | Quit (close the plugin under dock); `ctrl+c` also quits |
 
 **Meetings** panel:
 
@@ -196,7 +197,7 @@ Global, from any panel:
 |---|---|
 | `↑`/`k`, `↓`/`j` | Move between meetings |
 | `→`/`l`/`enter` | Open the selected meeting |
-| `←`/`h`/`esc` | Open the People picker |
+| `esc` | Back to the People picker |
 | `n` | Start a new meeting right now, and jump straight into notes |
 | `L` | Lock/unlock the selected meeting |
 | `d` | Delete the selected meeting |
@@ -207,7 +208,7 @@ Global, from any panel:
 |---|---|
 | `↑`/`k`, `↓`/`j` | Move between goals |
 | `space` | Toggle the selected goal done/open |
-| `←`/`h`/`esc` | Open the People picker |
+| `esc` | Back to the People picker |
 | `n` | Add a goal to the selected person (long-term or short-term) |
 | `d` | Delete the selected goal |
 

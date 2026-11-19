@@ -239,8 +239,12 @@ func (a *App) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Global keys, available from any panel.
 	switch {
-	case isKey(msg, "q", "ctrl+c"):
+	case isKey(msg, "ctrl+c"):
 		return a, tea.Quit
+	case isKey(msg, "q"):
+		// q backs out of the notes view to the person picker (the picker
+		// is where q quits/closes).
+		return a.openPeople()
 	case isKey(msg, "?"):
 		a.modal = modalHelp
 		return a, nil
@@ -261,8 +265,6 @@ func (a *App) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case isKey(msg, "shift+tab"):
 		a.cyclePanel(-1)
 		return a, nil
-	case isKey(msg, "P"):
-		return a.openPeople()
 	case isKey(msg, "2"):
 		a.setFocus(panelMeetings)
 		return a, nil
@@ -634,8 +636,8 @@ func (a *App) handlePeopleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			a.closePeople()
 			a.setFocus(panelMeetings)
 		}
-	case isKey(msg, "esc", "left", "h", "q"):
-		a.closePeople()
+	case isKey(msg, "q", "ctrl+c"):
+		return a, tea.Quit
 	case isKey(msg, "n"):
 		return a.startNewPerson()
 	case isKey(msg, "r"):
@@ -669,7 +671,7 @@ func (a *App) handleMeetingsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			a.meetingsCursor++
 			a.selectMeeting()
 		}
-	case isKey(msg, "left", "h", "esc"):
+	case isKey(msg, "esc"):
 		return a.openPeople()
 	case isKey(msg, "right", "l", "enter"):
 		if len(a.meetings) > 0 {
@@ -831,7 +833,7 @@ func (a *App) handleGoalsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	goals := personGoalsOrdered(p)
 
 	switch {
-	case isKey(msg, "left", "h", "esc"):
+	case isKey(msg, "esc"):
 		return a.openPeople()
 	case isKey(msg, "up", "k"):
 		if a.goalIdx > 0 {
