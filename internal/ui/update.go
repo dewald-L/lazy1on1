@@ -620,9 +620,7 @@ func (a *App) handlePeopleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if a.peopleCursor < len(a.people)-1 {
 			a.peopleCursor++
 		}
-	case isKey(msg, " "):
-		a.selectPerson()
-	case isKey(msg, "right", "l", "enter"):
+	case isKey(msg, " ", "right", "l", "enter"):
 		if len(a.people) > 0 {
 			a.selectPerson()
 			a.closePeople()
