@@ -17,7 +17,6 @@ func (a *App) View() string {
 
 	left := lipgloss.JoinVertical(
 		lipgloss.Left,
-		a.renderPeoplePanel(),
 		a.renderMeetingsPanel(),
 		a.renderGoalsPanel(),
 		a.renderActionsPanel(),
@@ -51,6 +50,8 @@ func (a *App) View() string {
 		return a.overlay(view, a.renderRenameModal())
 	case modalHelp:
 		return a.overlay(view, a.renderHelpModal())
+	case modalPeople:
+		return a.overlay(view, a.renderPeopleModal())
 	}
 	return view
 }
@@ -126,25 +127,22 @@ func relDate(t time.Time) string {
 	return t.Format("Jan 2, 2006")
 }
 
-// --- people panel ---------------------------------------------------------
+// --- people modal ---------------------------------------------------------
 
-func (a *App) renderPeoplePanel() string {
-	w, h := leftColumnWidth(), a.peopleHeight()
-	focused := a.focus == panelPeople
-
+func (a *App) renderPeopleModal() string {
 	var b strings.Builder
 	b.WriteString(panelTitleStyle.Render(panelShortcut(panelPeople)+"People") + "\n\n")
 
 	if len(a.people) == 0 {
-		b.WriteString(dimItemStyle.Render("no one yet\npress n to add"))
+		b.WriteString(dimItemStyle.Render("no one yet\npress n to add") + "\n")
 	}
 	for i, p := range a.people {
-		style := rowStyle(focused, focused && i == a.peopleCursor, i == a.peopleIdx)
+		style := rowStyle(true, i == a.peopleCursor, i == a.peopleIdx)
 		b.WriteString(style.Render(p.Name))
 		b.WriteString("\n")
 	}
-
-	return panelBorder(focused, "People", w, h).Render(b.String())
+	b.WriteString("\n" + dimItemStyle.Render("↑/↓ move · space select · enter open · n new · r rename · d delete · esc close"))
+	return modalStyle.Width(60).Render(b.String())
 }
 
 // --- goals panel ---------------------------------------------------------
@@ -622,13 +620,11 @@ func (a *App) helpPairs() []kv {
 		return append(pairs, kv{"y/enter", "confirm"}, kv{"esc/n", "cancel"})
 	case modalRename:
 		return append(pairs, kv{"enter", "save"}, kv{"esc", "cancel"})
+	case modalPeople:
+		return append(pairs, kv{"space", "select"}, kv{"enter", "open person"}, kv{"n", "new"}, kv{"r", "rename"}, kv{"d", "delete"}, kv{"esc", "close"})
 	}
 
 	switch a.focus {
-	case panelPeople:
-		pairs = append(pairs,
-			kv{"space", "select"}, kv{"→/l/enter", "open person"}, kv{"n", "new person"}, kv{"r", "rename person"}, kv{"d", "delete person"},
-		)
 	case panelGoals:
 		pairs = append(pairs,
 			kv{"space", "toggle"}, kv{"←/h/esc", "back"}, kv{"n", "new goal"}, kv{"r", "rename goal"}, kv{"d", "delete goal"},
@@ -655,7 +651,7 @@ func (a *App) helpPairs() []kv {
 	}
 
 	return append(pairs,
-		kv{"tab", "panel"},
+		kv{"1", "people"}, kv{"tab", "panel"},
 		kv{"?", "help"}, kv{"q", a.quitWord()},
 	)
 }
@@ -731,7 +727,7 @@ func (a *App) renderHelpModal() string {
 	var b strings.Builder
 	b.WriteString(titleStyle.Render("lazy1on1 — keybindings") + "\n\n")
 	sections := [][2]string{
-		{"Navigation", "tab / shift+tab     cycle panel\n1/2/3/4/5/0         jump to People / Meetings / Global Notes / Goals / Actions / Meeting notes\n↑/k, ↓/j            move cursor within panel\nspace               confirm cursor as selection (People)\n                    (Meetings syncs the Meeting notes panel as you move, no space needed)\n→/l/enter           confirm selection and drill into panel\n←/h/esc             back out"},
+		{"Navigation", "tab / shift+tab     cycle panel\n1                   open the People picker (modal)\n2/3/4/5/0           jump to Meetings / Global Notes / Goals / Actions / Meeting notes\n↑/k, ↓/j            move cursor within panel\nspace               confirm cursor as selection (People)\n                    (Meetings syncs the Meeting notes panel as you move, no space needed)\n→/l/enter           confirm selection and drill into panel\n←/h/esc             back out"},
 		{"People & meetings", "n   new — contextual per panel:\n      People        new person\n      Meetings      new meeting now (opens editor)\n      Goals         new goal (long-term or short-term)\n      Actions,\n      Meeting notes quick-add an action item to the selected meeting\nd   delete — contextual per panel, always asks to confirm:\n      People        delete the selected person and all their data\n      Meetings,\n      Meeting notes delete the selected/current meeting\n      Goals         delete the selected goal\n      Actions       delete the selected action item\n      Global Notes  clear the person's global notes\nr   rename/cycle RAG — contextual per panel:\n      People        rename the selected person\n      Meetings      cycle RAG status (none→green→amber→red)\n      Goals         rename the selected goal\n      Actions       rename the selected action item\nL   lock/unlock — Meetings, Meeting notes:\n      toggle the selected/current meeting's locked state. A locked\n      meeting shows \"(locked)\"/\"[locked]\" and rejects RAG/Pulse\n      changes, notes edits, action items/wins, and deletion — from\n      any panel, including action items reached via the Actions\n      panel — until unlocked again."},
 		{"Meeting notes panel", "↑↓/jk       move between the RAG row, Perceived Pulse row, and notes body\n            (scrolls once the cursor reaches the notes)\nenter/space cycle the selected row's value:\n              RAG              none→green→amber→red\n              Perceived Pulse  none→down→steady→up\nw           log a win since the last 1:1 (appended under \"## Wins\")"},
 		{"Global Notes panel", "a free-form, per-person notes block that persists across all of that\nperson's meetings — unlike Meeting notes, which belong to one meeting.\n↑↓/jk       scroll"},

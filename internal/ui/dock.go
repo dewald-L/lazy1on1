@@ -22,15 +22,15 @@ func (a *App) Commands() []plugin.Command {
 }
 
 func (a *App) runCommand(c commandMsg) (tea.Model, tea.Cmd) {
-	if a.modal != modalNone && a.modal != modalHelp {
+	if a.modal != modalNone && a.modal != modalHelp && a.modal != modalPeople {
 		a.status = "finish the open dialog first"
 		return a, nil
 	}
-	a.modal = modalNone
+	a.closePeople()
 	switch c.name {
 	case "person":
-		a.setFocus(panelPeople)
-		return a.newForFocus()
+		a.peopleReturn = false
+		return a.startNewPerson()
 	case "meeting":
 		if a.currentPerson() == nil {
 			a.status = "select a person first"

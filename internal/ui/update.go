@@ -185,17 +185,8 @@ func (a *App) detailHeight() int {
 // its share will silently grow and push everything below and beside the
 // left column out of sync. renderActionsPanel clips its item list to
 // actionsHeight() for exactly this reason.
-func (a *App) peopleHeight() int {
-	avail := a.totalBodyHeight() - 8 // four panels' worth of borders
-	h := avail / 4
-	if h < 3 {
-		h = 3
-	}
-	return h
-}
-
 func (a *App) goalsHeight() int {
-	avail := a.totalBodyHeight() - 8
+	avail := a.totalBodyHeight() - 6
 	h := avail / 4
 	if h < 3 {
 		h = 3
@@ -204,7 +195,7 @@ func (a *App) goalsHeight() int {
 }
 
 func (a *App) actionsHeight() int {
-	avail := a.totalBodyHeight() - 8
+	avail := a.totalBodyHeight() - 6
 	h := avail / 4
 	if h < 4 {
 		h = 4
@@ -213,8 +204,8 @@ func (a *App) actionsHeight() int {
 }
 
 func (a *App) meetingsHeight() int {
-	avail := a.totalBodyHeight() - 8
-	h := avail - a.peopleHeight() - a.goalsHeight() - a.actionsHeight()
+	avail := a.totalBodyHeight() - 6
+	h := avail - a.goalsHeight() - a.actionsHeight()
 	if h < 3 {
 		h = 3
 	}
@@ -225,7 +216,7 @@ func (a *App) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// Modal input takes over the keyboard entirely first.
 	switch a.modal {
 	case modalNewPerson:
-		return a.handleNewPersonKey(msg)
+		return a.returnToPeople(a.handleNewPersonKey(msg))
 	case modalQuickAdd:
 		return a.handleQuickAddKey(msg)
 	case modalAddGoal:
@@ -235,12 +226,14 @@ func (a *App) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case modalEditGlobalNotes:
 		return a.handleEditGlobalNotesKey(msg)
 	case modalConfirmDelete:
-		return a.handleConfirmDeleteKey(msg)
+		return a.returnToPeople(a.handleConfirmDeleteKey(msg))
 	case modalRename:
-		return a.handleRenameKey(msg)
+		return a.returnToPeople(a.handleRenameKey(msg))
 	case modalHelp:
 		a.modal = modalNone
 		return a, nil
+	case modalPeople:
+		return a.handlePeopleKey(msg)
 	}
 
 	// Global keys, available from any panel.
@@ -262,14 +255,13 @@ func (a *App) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case isKey(msg, "L"):
 		return a.toggleLockForFocus()
 	case isKey(msg, "tab"):
-		a.setFocus((a.focus + 1) % 6)
+		a.cyclePanel(1)
 		return a, nil
 	case isKey(msg, "shift+tab"):
-		a.setFocus((a.focus + 5) % 6)
+		a.cyclePanel(-1)
 		return a, nil
 	case isKey(msg, "1"):
-		a.setFocus(panelPeople)
-		return a, nil
+		return a.openPeople()
 	case isKey(msg, "2"):
 		a.setFocus(panelMeetings)
 		return a, nil
@@ -292,8 +284,6 @@ func (a *App) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	switch a.focus {
-	case panelPeople:
-		return a.handlePeopleKey(msg)
 	case panelGoals:
 		return a.handleGoalsKey(msg)
 	case panelMeetings:
@@ -313,8 +303,6 @@ func (a *App) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 // always starts the cursor where the last selection landed.
 func (a *App) setFocus(p panelID) {
 	switch p {
-	case panelPeople:
-		a.peopleCursor = a.peopleIdx
 	case panelMeetings:
 		a.meetingsCursor = a.meetingsIdx
 	}
@@ -328,11 +316,6 @@ func (a *App) setFocus(p panelID) {
 // thing in the panel you're looking at."
 func (a *App) newForFocus() (tea.Model, tea.Cmd) {
 	switch a.focus {
-	case panelPeople:
-		a.nameInput.Reset()
-		cmd := a.nameInput.Focus()
-		a.modal = modalNewPerson
-		return a, cmd
 	case panelGoals:
 		return a.startAddGoal()
 	case panelMeetings:
@@ -360,8 +343,6 @@ func (a *App) newForFocus() (tea.Model, tea.Cmd) {
 // its Actions/Meeting notes branch.
 func (a *App) deleteForFocus() (tea.Model, tea.Cmd) {
 	switch a.focus {
-	case panelPeople:
-		return a.confirmDeletePerson()
 	case panelGoals:
 		return a.confirmDeleteGoal()
 	case panelMeetings, panelDetail:
@@ -382,8 +363,6 @@ func (a *App) deleteForFocus() (tea.Model, tea.Cmd) {
 // handleKey, where "r" instead cycles RAG.
 func (a *App) renameForFocus() (tea.Model, tea.Cmd) {
 	switch a.focus {
-	case panelPeople:
-		return a.renamePersonPrompt()
 	case panelGoals:
 		return a.renameGoalPrompt()
 	case panelActions:
@@ -587,6 +566,49 @@ func isKey(msg tea.KeyMsg, keys ...string) bool {
 
 // --- panel: people ------------------------------------------------------
 
+// openPeople opens the centered People modal with the cursor on the
+// currently selected person.
+func (a *App) openPeople() (tea.Model, tea.Cmd) {
+	a.peopleCursor = a.peopleIdx
+	a.peopleReturn = true
+	a.modal = modalPeople
+	return a, nil
+}
+
+// returnToPeople reopens the People modal when a dialog launched from it
+// (new/rename/delete) has just closed.
+func (a *App) returnToPeople(m tea.Model, cmd tea.Cmd) (tea.Model, tea.Cmd) {
+	if a.modal == modalNone && a.peopleReturn {
+		a.modal = modalPeople
+	}
+	return m, cmd
+}
+
+// startNewPerson opens the new-person dialog.
+func (a *App) startNewPerson() (tea.Model, tea.Cmd) {
+	a.nameInput.Reset()
+	cmd := a.nameInput.Focus()
+	a.modal = modalNewPerson
+	return a, cmd
+}
+
+// cyclePanel moves focus through the sidebar/right panels in order,
+// skipping panelPeople (it is a modal, not a panel).
+func (a *App) cyclePanel(delta int) {
+	const n = int(panelDetail) // panels 1..5 -> n of them
+	i := int(a.focus) - 1
+	if i < 0 {
+		i = 0
+	}
+	i = ((i+delta)%n + n) % n
+	a.setFocus(panelID(i + 1))
+}
+
+func (a *App) closePeople() {
+	a.peopleReturn = false
+	a.modal = modalNone
+}
+
 func (a *App) handlePeopleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch {
 	case isKey(msg, "up", "k"):
@@ -602,8 +624,17 @@ func (a *App) handlePeopleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case isKey(msg, "right", "l", "enter"):
 		if len(a.people) > 0 {
 			a.selectPerson()
-			a.focus = panelMeetings
+			a.closePeople()
+			a.setFocus(panelMeetings)
 		}
+	case isKey(msg, "esc", "left", "h", "1", "q"):
+		a.closePeople()
+	case isKey(msg, "n"):
+		return a.startNewPerson()
+	case isKey(msg, "r"):
+		return a.renamePersonPrompt()
+	case isKey(msg, "d"):
+		return a.confirmDeletePerson()
 	}
 	return a, nil
 }
@@ -632,7 +663,7 @@ func (a *App) handleMeetingsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			a.selectMeeting()
 		}
 	case isKey(msg, "left", "h", "esc"):
-		a.setFocus(panelPeople)
+		return a.openPeople()
 	case isKey(msg, "right", "l", "enter"):
 		if len(a.meetings) > 0 {
 			a.selectMeeting()
@@ -786,8 +817,7 @@ func (a *App) handleGoalsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	switch {
 	case isKey(msg, "left", "h", "esc"):
-		a.setFocus(panelPeople)
-		return a, nil
+		return a.openPeople()
 	case isKey(msg, "up", "k"):
 		if a.goalIdx > 0 {
 			a.goalIdx--

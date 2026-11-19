@@ -13,6 +13,8 @@ import (
 
 type panelID int
 
+// panelPeople is no longer a sidebar panel: it is the focus value used while
+// the People modal (modalPeople) is open, and is skipped by tab cycling.
 const (
 	panelPeople panelID = iota
 	panelMeetings
@@ -34,6 +36,7 @@ const (
 	modalConfirmDelete
 	modalRename
 	modalHelp
+	modalPeople // centered picker for the People view; replaces the old sidebar panel
 )
 
 const actionHeading = "## action items"
@@ -68,6 +71,10 @@ type App struct {
 
 	focus panelID
 	modal modalID
+
+	// peopleReturn is set while a People-modal action (new/rename/delete)
+	// has another modal open on top, so closing it returns to the People modal.
+	peopleReturn bool
 
 	people       []store.Person
 	peopleIdx    int // confirmed selection: drives the Meetings panel
@@ -153,7 +160,7 @@ func New(s *store.Store) *App {
 
 	a := &App{
 		store:               s,
-		focus:               panelPeople,
+		focus:               panelMeetings,
 		notesVP:             viewport.New(10, 10),
 		globalNotesVP:       viewport.New(10, 10),
 		globalNotesEditArea: gnta,
