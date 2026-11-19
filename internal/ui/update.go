@@ -626,7 +626,15 @@ func (a *App) handlePeopleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			a.closePeople()
 			a.setFocus(panelMeetings)
 		}
-	case isKey(msg, "esc", "left", "h", "1", "q"):
+	case len(msg.String()) == 1 && msg.String()[0] >= '1' && msg.String()[0] <= '9':
+		// number keys pick the nth person directly
+		if i := int(msg.String()[0] - '1'); i < len(a.people) {
+			a.peopleCursor = i
+			a.selectPerson()
+			a.closePeople()
+			a.setFocus(panelMeetings)
+		}
+	case isKey(msg, "esc", "left", "h", "q"):
 		a.closePeople()
 	case isKey(msg, "n"):
 		return a.startNewPerson()
