@@ -122,13 +122,16 @@ overdue`), with a warning dot when a 1:1 is overdue. Inside dock:
 
 ## Layout
 
-Like lazygit's multi-pane layout: **People**, **Meetings**, **Goals** and
-**Actions** stack vertically in a left-hand sidebar (like lazygit's Branches
-panel sitting above its Commits panel). To the right, **Global Notes** stacks
+lazy1on1 opens on the **People** picker, a centered modal listing everyone
+you meet with. Pick a person and you land on the notes view, a lazygit-style
+multi-pane layout: **Meetings**, **Goals** and **Actions** stack vertically
+in a left-hand sidebar (like lazygit's Branches panel sitting above its
+Commits panel). To the right, **Global Notes** stacks
 above **Meeting notes**, filling the rest of the width. A third panel —
 titled **Detail** — spans the full width along the bottom.
 
-- **People** — everyone you have recurring 1:1s with.
+- **People** (centered modal, not a sidebar panel) — everyone you have
+  recurring 1:1s with. It is the home screen; reopen it with `P`.
 - **Meetings** — every dated session with the selected person, most recent
   first, with a RAG dot, an open-action-item count, and `(locked)` for any
   meeting that's been locked.
@@ -144,7 +147,8 @@ titled **Detail** — spans the full width along the bottom.
   observations). Separate from a meeting's own notes below it.
 - **Meeting notes** (right, bottom, keyboard-focusable — `0`) — the selected
   meeting's RAG and Perceived Pulse status (interactive header rows), wins
-  since the last 1:1, and that meeting's own notes.
+  since the last 1:1, and that meeting's own notes. The previous meeting's
+  notes are shown read-only underneath (toggle with `p`), also while editing.
 - **Detail** (bottom, always visible) — RAG and Perceived Pulse over time
   for the selected person, as two bar graphs side by side.
 
@@ -154,7 +158,7 @@ The bottom help bar is contextual, lazygit-style: it always leads with the
 keys that do something in whichever panel currently has focus, followed by
 the keys that work no matter where focus is. `n` ("new") is the clearest
 example: it has no global meaning of its own and only exists per panel —
-new person in People, new meeting in Meetings, new goal in Goals, quick-add
+new person in the People picker, new meeting in Meetings, new goal in Goals, quick-add
 an action item in Actions/Meeting notes — see the per-panel tables below. `e`/`E`
 ("edit notes" / edit in `$EDITOR`) work the same way: they edit the Global
 Notes panel's notes when that panel has focus, and the selected meeting's
@@ -168,19 +172,23 @@ Global, from any panel:
 | Key | Action |
 |---|---|
 | `tab` / `shift+tab` | Cycle focus between panels |
-| `1` / `2` / `3` / `4` / `5` / `0` | Jump straight to People / Meetings / Global Notes / Goals / Actions / Meeting notes |
+| `P` | Open the People picker |
+| `2` / `3` / `4` / `5` / `0` | Jump straight to Meetings / Global Notes / Goals / Actions / Meeting notes |
 | `r` | Cycle the selected meeting's RAG status: none → green → amber → red |
 | `?` | Help |
 | `q` / `ctrl+c` | Quit |
 
-**People** panel:
+**People** picker (modal; its keys are separate from the notes view's):
 
 | Key | Action |
 |---|---|
-| `↑`/`k`, `↓`/`j` | Move between people |
-| `→`/`l`/`enter` | Open the selected person's meetings |
+| `1`–`9` | Open that numbered person's meetings |
+| `↑`/`k`, `↓`/`j` | Move the highlight between people |
+| `space`/`enter`/`→`/`l` | Open the highlighted person's meetings |
 | `n` | Add a new person |
-| `d` | Delete the selected person (and all their meetings, goals, notes) |
+| `r` | Rename the highlighted person |
+| `d` | Delete the highlighted person (and all their meetings, goals, notes) |
+| `esc`/`←`/`h`/`q` | Close the picker |
 
 **Meetings** panel:
 
@@ -188,7 +196,7 @@ Global, from any panel:
 |---|---|
 | `↑`/`k`, `↓`/`j` | Move between meetings |
 | `→`/`l`/`enter` | Open the selected meeting |
-| `←`/`h`/`esc` | Back to People |
+| `←`/`h`/`esc` | Open the People picker |
 | `n` | Start a new meeting right now, and jump straight into notes |
 | `L` | Lock/unlock the selected meeting |
 | `d` | Delete the selected meeting |
@@ -199,7 +207,7 @@ Global, from any panel:
 |---|---|
 | `↑`/`k`, `↓`/`j` | Move between goals |
 | `space` | Toggle the selected goal done/open |
-| `←`/`h`/`esc` | Back to People |
+| `←`/`h`/`esc` | Open the People picker |
 | `n` | Add a goal to the selected person (long-term or short-term) |
 | `d` | Delete the selected goal |
 
@@ -232,6 +240,7 @@ to any meeting):
 | `enter`/`space` | Cycle the selected row's value (RAG or Perceived Pulse) |
 | `←`/`h`/`esc` | Back to Meetings |
 | `w` | Log a win since the last 1:1 |
+| `p` | Show/hide the previous meeting's notes below the current ones (`ctrl+p` while editing; `alt+↑`/`alt+↓` scrolls it) |
 | `e` | Edit notes inline (small built-in editor) |
 | `E` | Edit the meeting file in `$EDITOR` |
 | `n` | Quick-add an action item to the selected meeting |
