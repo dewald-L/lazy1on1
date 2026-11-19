@@ -175,6 +175,10 @@ func New(s *store.Store) *App {
 		editArea:            ta,
 	}
 	a.reloadPeople()
+	// Home page: start on the person selector.
+	a.peopleCursor = a.peopleIdx
+	a.peopleReturn = true
+	a.modal = modalPeople
 	return a
 }
 
