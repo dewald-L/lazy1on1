@@ -261,7 +261,7 @@ func (a *App) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case isKey(msg, "shift+tab"):
 		a.cyclePanel(-1)
 		return a, nil
-	case isKey(msg, "1"):
+	case isKey(msg, "P"):
 		return a.openPeople()
 	case isKey(msg, "2"):
 		a.setFocus(panelMeetings)
