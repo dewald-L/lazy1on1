@@ -46,14 +46,15 @@ go test ./...             # test (internal/store and dockplugin's Summary)
   terminal from `ui`; see ../dock/docs/PLUGINS.md.
 - `internal/store/` — markdown + front-matter persistence, action-item
   parsing, cross-person aggregation. No UI concerns.
-- `internal/ui/` — Bubble Tea model/update/view for the six-panel layout:
-  People / Meetings / Goals / Actions stacked in a left sidebar; Global
-  Notes (per-person, not tied to any meeting) stacked above Meeting notes
-  (per-meeting notes; on-screen label "Meeting notes", but the panel's
+- `internal/ui/` — Bubble Tea model/update/view for the panel layout in
+  full-width rows: Meetings | Actions on top; Previous meeting | Meeting notes in the middle (the
+  previous window hides on narrow terminals); Global Notes (per-person, not tied to any meeting) | Goals under them;
+  then the Detail graphs, which also show the interactive RAG/Pulse rows.
+  Row heights/widths are the `*Height()`/`*Width()` helpers in `update.go`.
+  The per-meeting notes panel is labeled "Meeting notes" on screen, but its
   internal identifiers — `panelDetail`, `renderDetailPanel`, `syncDetail`,
   `handleDetailKey`, etc. — still say "Detail", left that way rather than
-  renamed across the codebase) on the right. No file I/O of its own; goes
-  through `store`.
+  renamed across the codebase. No file I/O of its own; goes through `store`.
 - Contextual keys and hints: some keys (e.g. `n`, the "new X for this panel"
   key, and `e`/`E`, "edit notes") dispatch on `a.focus` in `update.go`
   rather than doing one fixed thing — see `newForFocus` and
@@ -65,7 +66,7 @@ go test ./...             # test (internal/store and dockplugin's Summary)
   independent hand-written switches, not generated from one table — when
   adding or changing a contextual key, update all three together or the
   on-screen hints will drift from actual behavior.
-- Panel numbering (`1`-`4`/`0` jump keys, `tab`/`shift+tab` cycling) is a fixed
+- Panel numbering (`1`-`5` jump keys, `tab`/`shift+tab` cycling) is a fixed
   `panelID` enum in `model.go`; adding/removing/reordering a panel means
   updating the enum, `keys.FocusPanel`'s key list, the jump-key `case`s and
   the tab modulo in `update.go`'s `handleKey`, together — they don't derive

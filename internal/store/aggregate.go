@@ -10,10 +10,27 @@ type GlobalActionItem struct {
 	Item    ActionItem
 }
 
+// PersonActionItems returns every checklist item (done or not) across one
+// person's meetings, most recent meeting first. This backs the Actions panel,
+// which is unique to the selected person.
+func (s *Store) PersonActionItems(p Person) ([]GlobalActionItem, error) {
+	meetings, err := s.ListMeetings(p)
+	if err != nil {
+		return nil, err
+	}
+	var out []GlobalActionItem
+	for _, m := range meetings { // already newest first
+		for _, item := range m.ActionItems {
+			out = append(out, GlobalActionItem{Person: p, Meeting: m, Item: item})
+		}
+	}
+	return out, nil
+}
+
 // AllActionItems scans every person's every meeting and returns every
-// checklist item, done or not, most recent meeting first. This backs the
-// sidebar Actions panel, which lists everyone's action items rather than
-// just the currently selected person's.
+// checklist item, done or not, most recent meeting first, for the
+// cross-person views (the Actions panel itself is per person, see
+// PersonActionItems).
 func (s *Store) AllActionItems() ([]GlobalActionItem, error) {
 	people, err := s.ListPeople()
 	if err != nil {

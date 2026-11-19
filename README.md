@@ -124,13 +124,16 @@ overdue`), with a warning dot when a 1:1 is overdue. Inside dock:
 
 lazy1on1 opens on the **People** picker, a centered modal listing everyone
 you meet with. Pick a person and you land on the notes view, a lazygit-style
-multi-pane layout: **Meetings**, **Goals** and **Actions** stack vertically
-in a left-hand sidebar (like lazygit's Branches panel sitting above its
-Commits panel). To the right, **Global Notes** stacks
-above **Meeting notes**, filling the rest of the width. A third panel —
-titled **Detail** — spans the full width along the bottom.
+multi-pane layout in four full-width rows:
 
-- **People** (centered modal, not a sidebar panel) — everyone you have
+```
+Meetings         | Actions
+Previous meeting | Meeting notes
+Global Notes     | Goals
+Detail (RAG / Perceived Pulse over time, full width)
+```
+
+- **People** (centered modal, not a panel) — everyone you have
   recurring 1:1s with. It is the home screen; `q` from the notes view (or
   `esc` in Meetings/Goals) goes back to it. It is a separate screen with its
   own keys.
@@ -139,20 +142,22 @@ titled **Detail** — spans the full width along the bottom.
   meeting that's been locked.
 - **Goals** — the selected person's Long-term / Short-term goals checklist
   (per-person, so it stays the same as you switch between that person's
-  meetings).
-- **Actions** — every action item across all of the selected person's
+  meetings), split into **Open** and **Completed** tabs (switch with `t`).
+- **Actions** — the selected person's action items across all of their
   meetings, most recent meeting first, each one showing which meeting it
-  came from.
-- **Global Notes** (right, top, keyboard-focusable — `2`) — free-form notes
+  came from, split into **Open** and **Closed** tabs (switch with `t`).
+  Other people's items never appear here.
+- **Global Notes** (bottom left, keyboard-focusable — `4`) — free-form notes
   about the selected person that persist across all of their meetings, not
   tied to any single one (e.g. background, career context, running
   observations). Separate from a meeting's own notes below it.
-- **Meeting notes** (right, bottom, keyboard-focusable — `0`) — the selected
-  meeting's RAG and Perceived Pulse status (interactive header rows), wins
-  since the last 1:1, and that meeting's own notes. The previous meeting's
-  notes are shown read-only underneath (toggle with `p`), also while editing.
-- **Detail** (bottom, always visible) — RAG and Perceived Pulse over time
-  for the selected person, as two bar graphs side by side.
+- **Meeting notes** (middle row, keyboard-focusable — `3`) — wins since the
+  last 1:1 and the selected meeting's own notes. The previous meeting's notes
+  are shown read-only in their own window to its left (toggle with `p`), also
+  while editing.
+- **Detail** (bottom, always visible) — the selected meeting's RAG and
+  Perceived Pulse (the interactive rows, highlighted when Meeting notes has
+  focus), and both over time as two bar graphs side by side.
 
 ## Keybindings
 
@@ -175,7 +180,7 @@ Global, from any panel:
 |---|---|
 | `tab` / `shift+tab` | Cycle focus between panels |
 | `q` | Back to the People picker (`ctrl+c` quits) |
-| `1` / `2` / `3` / `4` / `0` | Jump straight to Meetings / Global Notes / Goals / Actions / Meeting notes |
+| `1` / `2` / `3` / `4` / `5` | Jump straight to Meetings / Actions / Meeting notes / Global Notes / Goals |
 | `r` | Cycle the selected meeting's RAG status: none → green → amber → red |
 | `?` | Help |
 
@@ -207,7 +212,8 @@ Global, from any panel:
 | Key | Action |
 |---|---|
 | `↑`/`k`, `↓`/`j` | Move between goals |
-| `space` | Toggle the selected goal done/open |
+| `t` | Switch between the **Open** and **Completed** tabs |
+| `space` | Toggle the selected goal done/open (it moves to the other tab) |
 | `esc` | Back to the People picker |
 | `n` | Add a goal to the selected person (long-term or short-term) |
 | `d` | Delete the selected goal |
@@ -217,7 +223,8 @@ Global, from any panel:
 | Key | Action |
 |---|---|
 | `↑`/`k`, `↓`/`j` | Move between action items |
-| `space` | Toggle the selected action item done/open |
+| `t` | Switch between the **Open** and **Closed** tabs |
+| `space` | Toggle the selected action item done/open (it moves to the other tab) |
 | `←`/`h`/`esc` | Back to Meetings |
 | `n` | Quick-add an action item to the currently selected meeting |
 | `d` | Delete the selected action item |
@@ -241,7 +248,7 @@ to any meeting):
 | `enter`/`space` | Cycle the selected row's value (RAG or Perceived Pulse) |
 | `←`/`h`/`esc` | Back to Meetings |
 | `w` | Log a win since the last 1:1 |
-| `p` | Show/hide the previous meeting's notes below the current ones (`ctrl+p` while editing; `alt+↑`/`alt+↓` scrolls it) |
+| `p` | Show/hide the previous meeting's notes in a window beside the current ones (`ctrl+p` while editing; `alt+↑`/`alt+↓` scrolls it) |
 | `e` | Edit notes inline (small built-in editor) |
 | `E` | Edit the meeting file in `$EDITOR` |
 | `n` | Quick-add an action item to the selected meeting |

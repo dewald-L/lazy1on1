@@ -227,3 +227,22 @@ func TestAllActionItemsAcrossPeople(t *testing.T) {
 		t.Fatalf("expected john-smith first, got %s", items[0].Person.Slug)
 	}
 }
+
+func TestPersonActionItemsOnlyThatPerson(t *testing.T) {
+	s := New(t.TempDir())
+	jane, _ := s.CreatePerson("Jane Doe", "", "", 14)
+	john, _ := s.CreatePerson("John Smith", "", "", 14)
+
+	m1, _ := s.CreateMeeting(jane, time.Now().Add(-48*time.Hour))
+	s.AddActionItem(&m1, "Jane task")
+	m2, _ := s.CreateMeeting(john, time.Now())
+	s.AddActionItem(&m2, "John task")
+
+	items, err := s.PersonActionItems(jane)
+	if err != nil {
+		t.Fatalf("PersonActionItems: %v", err)
+	}
+	if len(items) != 1 || items[0].Item.Text != "Jane task" || items[0].Person.Slug != jane.Slug {
+		t.Fatalf("expected only Jane's item, got %+v", items)
+	}
+}

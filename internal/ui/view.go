@@ -5,7 +5,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/bubbles/viewport"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/dewald-L/lazy1on1/internal/store"
 )
@@ -15,22 +17,13 @@ func (a *App) View() string {
 		return "loading..."
 	}
 
-	left := lipgloss.JoinVertical(
-		lipgloss.Left,
-		a.renderMeetingsPanel(),
-		a.renderGoalsPanel(),
-		a.renderActionsPanel(),
-	)
-	right := lipgloss.JoinVertical(
-		lipgloss.Left,
-		a.renderGlobalNotesPanel(),
-		a.renderDetailPanel(),
-	)
-	body := lipgloss.JoinHorizontal(
-		lipgloss.Top,
-		left,
-		right,
-	)
+	top := lipgloss.JoinHorizontal(lipgloss.Top, a.renderMeetingsPanel(), a.renderActionsPanel())
+	middle := a.renderDetailPanel()
+	if a.prevVisible() {
+		middle = lipgloss.JoinHorizontal(lipgloss.Top, a.renderPrevPanel(), middle)
+	}
+	bottom := lipgloss.JoinHorizontal(lipgloss.Top, a.renderGlobalNotesPanel(), a.renderGoalsPanel())
+	body := lipgloss.JoinVertical(lipgloss.Left, top, middle, bottom)
 
 	view := lipgloss.JoinVertical(lipgloss.Left, body, a.renderStatusGraphsPanel())
 	if !a.embedded {
@@ -160,7 +153,7 @@ func (a *App) renderPeopleModal() string {
 // --- goals panel ---------------------------------------------------------
 
 func (a *App) renderGoalsPanel() string {
-	w, h := leftColumnWidth(), a.goalsHeight()
+	w, h := a.goalsWidth(), a.goalsHeight()
 	focused := a.focus == panelGoals
 
 	var b strings.Builder
@@ -170,14 +163,29 @@ func (a *App) renderGoalsPanel() string {
 	if p != nil {
 		title = shortcut + "Goals — " + p.Name
 	}
-	b.WriteString(panelTitleStyle.Render(title) + "\n\n")
+	b.WriteString(panelTitleStyle.Render(title) + "\n")
 
 	if p == nil {
-		b.WriteString(dimItemStyle.Render("select a person"))
+		b.WriteString("\n" + dimItemStyle.Render("select a person"))
 		return panelBorder(focused, title, w, h).Render(b.String())
 	}
 
-	goalIdx := 0
+	// Open / Completed tabs (toggle with t).
+	nOpen, nDone := goalCounts(p)
+	openTab, doneTab := fmt.Sprintf("Open (%d)", nOpen), fmt.Sprintf("Completed (%d)", nDone)
+	active := selectedItemStyleDim // quiet while this panel isn't focused
+	if focused {
+		active = selectedItemStyle
+	}
+	if a.goalsDone {
+		openTab, doneTab = dimItemStyle.Render(openTab), active.Render(doneTab)
+	} else {
+		openTab, doneTab = active.Render(openTab), dimItemStyle.Render(doneTab)
+	}
+	b.WriteString(openTab + dimItemStyle.Render(" │ ") + doneTab + dimItemStyle.Render("   t switch") + "\n")
+
+	var body strings.Builder
+	goalIdx, selLine := 0, 0
 	renderGoal := func(g store.Goal) {
 		box := "[ ]"
 		style := openItemStyle
@@ -186,49 +194,68 @@ func (a *App) renderGoalsPanel() string {
 			style = doneItemStyle
 		}
 		line := fmt.Sprintf("%s %s", box, g.Text)
-		if focused && goalIdx == a.goalIdx {
-			b.WriteString(selectedItemStyle.Render(line))
-		} else {
-			b.WriteString(style.Render(line))
+		if goalIdx == a.goalIdx {
+			selLine = strings.Count(body.String(), "\n")
 		}
-		b.WriteString("\n")
+		if focused && goalIdx == a.goalIdx {
+			body.WriteString(selectedItemStyle.Render(line))
+		} else {
+			body.WriteString(style.Render(line))
+		}
+		body.WriteString("\n")
 		goalIdx++
 	}
 
-	b.WriteString(dimItemStyle.Render("Long-term") + "\n")
+	body.WriteString(dimItemStyle.Render("Long-term") + "\n")
 	hasLong := false
 	for _, g := range p.Goals {
-		if g.Term != "long" {
+		if g.Term != "long" || g.Done != a.goalsDone {
 			continue
 		}
 		hasLong = true
 		renderGoal(g)
 	}
 	if !hasLong {
-		b.WriteString(dimItemStyle.Render("  none") + "\n")
+		body.WriteString(dimItemStyle.Render("  none") + "\n")
 	}
 
-	b.WriteString(dimItemStyle.Render("Short-term") + "\n")
+	body.WriteString(dimItemStyle.Render("Short-term") + "\n")
 	hasShort := false
 	for _, g := range p.Goals {
-		if g.Term != "short" {
+		if g.Term != "short" || g.Done != a.goalsDone {
 			continue
 		}
 		hasShort = true
 		renderGoal(g)
 	}
 	if !hasShort {
-		b.WriteString(dimItemStyle.Render("  none") + "\n")
+		body.WriteString(dimItemStyle.Render("  none") + "\n")
 	}
-	b.WriteString(dimItemStyle.Render("press 'g' to add a goal"))
+	body.WriteString(dimItemStyle.Render("press 'n' to add a goal"))
 
-	return panelBorder(focused, title, w, h).Render(b.String())
+	// Scroll the goal lines so the selected goal stays visible.
+	all := strings.Split(body.String(), "\n")
+	capacity := h - 2
+	if capacity < 1 {
+		capacity = 1
+	}
+	start := 0
+	if selLine >= capacity {
+		start = selLine - capacity + 1
+	}
+	end := start + capacity
+	if end > len(all) {
+		end = len(all)
+	}
+	b.WriteString(withScrollbar(strings.Join(all[start:end], "\n"), w-3, scrollbar(len(all), end-start, start, capacity)))
+
+	return panelBorder(focused, title, w, h).Render(clipLines(b.String(), h))
 }
 
 // --- meetings panel ---------------------------------------------------------
 
 func (a *App) renderMeetingsPanel() string {
-	w, h := leftColumnWidth(), a.meetingsHeight()
+	w, h := a.meetingsWidth(), a.meetingsHeight()
 	focused := a.focus == panelMeetings
 
 	var b strings.Builder
@@ -246,7 +273,19 @@ func (a *App) renderMeetingsPanel() string {
 		b.WriteString(dimItemStyle.Render("no meetings yet\npress N to add one now"))
 	}
 
+	// Window the list so the cursor stays visible. Rows with tags take two
+	// lines, so the clip below is the backstop for the visible count.
+	capacity := h - 2
+	start := 0
+	if capacity > 0 && a.meetingsCursor >= capacity {
+		start = a.meetingsCursor - capacity + 1
+	}
+	var rows strings.Builder
+	shown := 0
 	for i, m := range a.meetings {
+		if i < start {
+			continue
+		}
 		open := len(m.OpenActionItems())
 		style := rowStyle(focused, focused && i == a.meetingsCursor, i == a.meetingsIdx)
 		// Rendered as two segments sharing style's background (rather than
@@ -256,57 +295,152 @@ func (a *App) renderMeetingsPanel() string {
 		// highlight covers the whole line.
 		glyphStyle := style.Foreground(ragColor(string(m.RAG)))
 		line := glyphStyle.Render(ragGlyphChar(string(m.RAG))) + style.Render(" "+relDate(m.Date))
-		b.WriteString(line)
+		rows.WriteString(line)
 		if m.Locked {
-			b.WriteString(dimItemStyle.Render("  (locked)"))
+			rows.WriteString(dimItemStyle.Render("  (locked)"))
 		}
 		if open > 0 {
-			b.WriteString(dimItemStyle.Render(fmt.Sprintf("  (%d open)", open)))
+			rows.WriteString(dimItemStyle.Render(fmt.Sprintf("  (%d open)", open)))
 		}
 		if len(m.Tags) > 0 {
-			b.WriteString("\n  " + tagStyle.Render(strings.Join(m.Tags, ", ")))
+			rows.WriteString("\n  " + tagStyle.Render(strings.Join(m.Tags, ", ")))
 		}
-		b.WriteString("\n")
+		rows.WriteString("\n")
+		shown++
+	}
+	if len(a.meetings) > 0 && capacity > 0 {
+		body := clipLines(rows.String(), capacity)
+		b.WriteString(withScrollbar(body, w-3, scrollbar(len(a.meetings), shown, start, capacity)))
 	}
 
-	return panelBorder(focused, title, w, h).Render(b.String())
+	return panelBorder(focused, title, w, h).Render(clipLines(b.String(), h))
+}
+
+// scrollbar draws a one-column vertical scrollbar, height lines tall, for a
+// list of total lines/items of which visible are shown starting at offset.
+// When everything fits it is a blank column, so the content width doesn't
+// change as content grows past the window.
+func scrollbar(total, visible, offset, height int) string {
+	if height < 1 {
+		return ""
+	}
+	lines := make([]string, height)
+	if total <= visible || total <= 0 {
+		for i := range lines {
+			lines[i] = " "
+		}
+		return strings.Join(lines, "\n")
+	}
+	thumb := height * visible / total
+	if thumb < 1 {
+		thumb = 1
+	}
+	if thumb > height {
+		thumb = height
+	}
+	pos := 0
+	if maxOff := total - visible; maxOff > 0 {
+		pos = (offset*(height-thumb) + maxOff/2) / maxOff
+	}
+	for i := range lines {
+		if i >= pos && i < pos+thumb {
+			lines[i] = scrollThumbStyle.Render("█")
+		} else {
+			lines[i] = scrollTrackStyle.Render("░")
+		}
+	}
+	return strings.Join(lines, "\n")
+}
+
+// withScrollbar puts a scrollbar to the right of block, which is padded to
+// width columns first.
+func withScrollbar(block string, width int, bar string) string {
+	return lipgloss.JoinHorizontal(lipgloss.Top, lipgloss.NewStyle().Width(width).Render(block), bar)
+}
+
+// inert restyles block in the previous-meeting window's permanent muted
+// palette, dropping any colors it already had.
+func inert(block string) string {
+	lines := strings.Split(ansi.Strip(block), "\n")
+	for i, l := range lines {
+		lines[i] = inertTextStyle.Render(l)
+	}
+	return strings.Join(lines, "\n")
+}
+
+// vpScrollbar is the scrollbar for a viewport.
+func vpScrollbar(vp viewport.Model) string {
+	return scrollbar(vp.TotalLineCount(), vp.Height, vp.YOffset, vp.Height)
+}
+
+// clipLines keeps at most n lines of s (see the comment on topHeight).
+func clipLines(s string, n int) string {
+	lines := strings.Split(strings.TrimRight(s, "\n"), "\n")
+	if len(lines) > n {
+		lines = lines[:n]
+	}
+	return strings.Join(lines, "\n")
 }
 
 // --- actions panel ---------------------------------------------------------
 
-// renderActionsPanel lists every action item across every person, most
-// recent meeting first, each one annotated with who it belongs to (as
-// reference — this panel isn't scoped to the currently selected person).
+// renderActionsPanel lists the selected person's action items, most recent
+// meeting first, each one annotated with the meeting it came from.
 func (a *App) renderActionsPanel() string {
-	w, h := leftColumnWidth(), a.actionsHeight()
+	w, h := a.actionsWidth(), a.actionsHeight()
 	focused := a.focus == panelActions
 
 	var b strings.Builder
 	shortcut := panelShortcut(panelActions)
 	title := shortcut + "Actions"
-	b.WriteString(panelTitleStyle.Render(title) + "\n\n")
+	if p := a.currentPerson(); p != nil {
+		title = shortcut + "Actions — " + p.Name
+	}
+	b.WriteString(panelTitleStyle.Render(title) + "\n")
+
+	// Open / Closed tabs (toggle with t).
+	nOpen, nClosed := a.actionCounts()
+	openTab, closedTab := fmt.Sprintf("Open (%d)", nOpen), fmt.Sprintf("Closed (%d)", nClosed)
+	active := selectedItemStyleDim // quiet while this panel isn't focused
+	if focused {
+		active = selectedItemStyle
+	}
+	if a.actionsClosed {
+		openTab, closedTab = dimItemStyle.Render(openTab), active.Render(closedTab)
+	} else {
+		openTab, closedTab = active.Render(openTab), dimItemStyle.Render(closedTab)
+	}
+	b.WriteString(openTab + dimItemStyle.Render(" │ ") + closedTab + dimItemStyle.Render("   t switch") + "\n")
 
 	items := a.actionItems
 	if len(items) == 0 {
-		b.WriteString(dimItemStyle.Render("none — press 'a' to add one"))
+		if a.actionsClosed {
+			b.WriteString(dimItemStyle.Render("no closed action items"))
+		} else {
+			b.WriteString(dimItemStyle.Render("no open action items — press 'n' to add one"))
+		}
 		return panelBorder(focused, title, w, h).Render(b.String())
 	}
 
-	// Each item takes two lines (the item, then who it belongs to); clip
-	// to what actually fits in h so an unbounded item count can't grow
-	// this panel past its share (see the comment on actionsHeight()).
-	shown, more := items, 0
-	if maxItems := (h - 2) / 2; maxItems < 1 {
-		shown, more = items[:0], len(items)
-	} else if len(items) > maxItems {
-		keep := maxItems
-		if maxItems > 1 {
-			keep = maxItems - 1 // leave a line for the "N more" note
-		}
-		shown, more = items[:keep], len(items)-keep
+	// Each item takes two lines (the item, then who it belongs to). Window
+	// the list to what fits in h so an unbounded item count can't grow this
+	// panel past its share, keeping the selected item visible.
+	capacity := (h - 2) / 2
+	if capacity < 1 {
+		capacity = 1
+	}
+	start := 0
+	if a.actionIdx >= capacity {
+		start = a.actionIdx - capacity + 1
+	}
+	end := start + capacity
+	if end > len(items) {
+		end = len(items)
 	}
 
-	for i, row := range shown {
+	var rows strings.Builder
+	for i := start; i < end; i++ {
+		row := items[i]
 		box := "[ ]"
 		style := openItemStyle
 		if row.Item.Done {
@@ -315,19 +449,18 @@ func (a *App) renderActionsPanel() string {
 		}
 		line := fmt.Sprintf("%s %s", box, row.Item.Text)
 		if focused && i == a.actionIdx {
-			b.WriteString(selectedItemStyle.Render(line))
+			rows.WriteString(selectedItemStyle.Render(line))
 		} else {
-			b.WriteString(style.Render(line))
+			rows.WriteString(style.Render(line))
 		}
-		b.WriteString("\n")
-		b.WriteString(dimItemStyle.Render("  " + row.Person.Name + " · " + relDate(row.Meeting.Date)))
-		b.WriteString("\n")
+		rows.WriteString("\n")
+		rows.WriteString(dimItemStyle.Render("  " + relDate(row.Meeting.Date)))
+		rows.WriteString("\n")
 	}
-	if more > 0 {
-		b.WriteString(dimItemStyle.Render(fmt.Sprintf("…and %d more (press 'A')", more)))
-	}
+	barH := capacity * 2
+	b.WriteString(withScrollbar(clipLines(rows.String(), barH), w-3, scrollbar(len(items), end-start, start, barH)))
 
-	return panelBorder(focused, title, w, h).Render(b.String())
+	return panelBorder(focused, title, w, h).Render(clipLines(b.String(), h))
 }
 
 // --- global notes panel -----------------------------------------------------
@@ -336,10 +469,7 @@ func (a *App) renderActionsPanel() string {
 // block that persists across all of that person's meetings — distinct from
 // the Detail panel's notes body below it, which is scoped to one meeting.
 func (a *App) renderGlobalNotesPanel() string {
-	w := a.width - leftColumnWidth() - 6
-	if w < 10 {
-		w = 10
-	}
+	w := a.globalNotesWidth()
 	h := a.globalNotesHeight()
 	focused := a.focus == panelGlobalNotes
 
@@ -361,7 +491,7 @@ func (a *App) renderGlobalNotesPanel() string {
 	if a.modal == modalEditGlobalNotes {
 		b.WriteString(a.globalNotesEditArea.View())
 	} else {
-		b.WriteString(a.globalNotesVP.View())
+		b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, a.globalNotesVP.View(), vpScrollbar(a.globalNotesVP)))
 	}
 
 	return panelBorder(focused, title, w, h).Render(b.String())
@@ -369,11 +499,20 @@ func (a *App) renderGlobalNotesPanel() string {
 
 // --- detail panel ---------------------------------------------------------
 
+// renderPrevPanel is the read-only previous-meeting window shown beside the
+// current meeting notes.
+func (a *App) renderPrevPanel() string {
+	prev := a.previousMeeting()
+	title := "Previous — " + prev.Date.Format("Mon, Jan 2 · 15:04")
+	var b strings.Builder
+	b.WriteString(inertTextStyle.Bold(true).Render(truncate(title, a.prevWidth()-2)) + "\n")
+	b.WriteString(inertTextStyle.Render("read-only · alt+↑/↓ scroll") + "\n")
+	b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, a.prevVP.View(), inert(vpScrollbar(a.prevVP))))
+	return panelStyleInert.Width(a.prevWidth()).Height(a.detailHeight()).Render(b.String())
+}
+
 func (a *App) renderDetailPanel() string {
-	w := a.width - leftColumnWidth() - 6
-	if w < 10 {
-		w = 10
-	}
+	w := a.detailWidth()
 	h := a.detailHeight()
 	focused := a.focus == panelDetail
 
@@ -389,32 +528,21 @@ func (a *App) renderDetailPanel() string {
 	}
 
 	if m != nil {
-		header := fmt.Sprintf("%sMeeting notes — %s  %s  %s", detailShortcut, p.Name, ragStyledGlyph(string(m.RAG)), m.Date.Format("Mon, Jan 2 2006 · 15:04"))
+		header := fmt.Sprintf("%sMeeting notes — %s", detailShortcut, m.Date.Format("Mon, Jan 2 2006 · 15:04"))
 		headerLine := panelTitleStyle.Render(header)
 		if m.Locked {
 			headerLine += "  " + lockedBadgeStyle.Render("[locked]")
 		}
-		b.WriteString(headerLine + "\n")
 		if len(m.Tags) > 0 {
-			b.WriteString(tagStyle.Render(strings.Join(m.Tags, ", ")) + "\n")
+			headerLine += "  " + tagStyle.Render(strings.Join(m.Tags, ", "))
 		}
-		b.WriteString(strings.Repeat("─", min(w-4, 60)) + "\n")
-
-		b.WriteString(renderMetricRow(focused && a.detailCursor == detailRowRAG,
-			"RAG", ragGlyphChar(string(m.RAG)), ragColor(string(m.RAG)), ragLabel(string(m.RAG))) + "\n")
-		b.WriteString(renderMetricRow(focused && a.detailCursor == detailRowPerceivedPulse,
-			"Perceived Pulse", perceivedPulseGlyphChar(string(m.PerceivedPulse)), perceivedPulseColor(string(m.PerceivedPulse)), m.PerceivedPulse.Label()) + "\n")
+		b.WriteString(headerLine + "\n")
 		b.WriteString(strings.Repeat("─", min(w-4, 60)) + "\n")
 
 		if a.modal == modalEditNotes {
 			b.WriteString(a.editArea.View())
 		} else {
-			b.WriteString(a.notesVP.View())
-		}
-		if a.prevVisible() {
-			prev := a.previousMeeting()
-			b.WriteString("\n" + dimItemStyle.Render("Previous meeting — "+prev.Date.Format("Mon, Jan 2 2006 · 15:04")+"  (alt+↑/↓ scroll)") + "\n")
-			b.WriteString(a.prevVP.View())
+			b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, a.notesVP.View(), vpScrollbar(a.notesVP)))
 		}
 	} else {
 		b.WriteString(panelTitleStyle.Render(detailShortcut+"Meeting notes — "+p.Name) + "\n\n")
@@ -503,10 +631,7 @@ func renderMetricGraph(label string, chron []store.Meeting, maxWidth int, levelO
 // since halving the width also halves how many meetings each graph can
 // show.
 func (a *App) renderStatusGraphsPanel() string {
-	w := a.width - 4
-	if w < 10 {
-		w = 10
-	}
+	w := a.rowWidth()
 	h := statusGraphsContentHeight
 
 	p := a.currentPerson()
@@ -517,6 +642,20 @@ func (a *App) renderStatusGraphsPanel() string {
 
 	var b strings.Builder
 	b.WriteString(panelTitleStyle.Render(title))
+	if m := a.currentMeeting(); m != nil {
+		focused := a.focus == panelDetail
+		metric := func(on bool, label, glyph string, c lipgloss.Color, val string) string {
+			l := label
+			if on {
+				l = selectedItemStyle.Render(label)
+			}
+			return l + " " + lipgloss.NewStyle().Foreground(c).Render(glyph) + " " + val
+		}
+		b.WriteString("   " + metric(focused && a.detailCursor == detailRowRAG, "RAG",
+			ragGlyphChar(string(m.RAG)), ragColor(string(m.RAG)), ragLabel(string(m.RAG))))
+		b.WriteString("   " + metric(focused && a.detailCursor == detailRowPerceivedPulse, "Perceived Pulse",
+			perceivedPulseGlyphChar(string(m.PerceivedPulse)), perceivedPulseColor(string(m.PerceivedPulse)), m.PerceivedPulse.Label()))
+	}
 
 	if p == nil || len(a.meetings) == 0 {
 		b.WriteString("\n" + dimItemStyle.Render("no meetings yet"))
@@ -644,7 +783,7 @@ func (a *App) helpPairs() []kv {
 	switch a.focus {
 	case panelGoals:
 		pairs = append(pairs,
-			kv{"space", "toggle"}, kv{"esc", "people"}, kv{"n", "new goal"}, kv{"r", "rename goal"}, kv{"d", "delete goal"},
+			kv{"space", "toggle"}, kv{"t", "open/completed tab"}, kv{"esc", "people"}, kv{"n", "new goal"}, kv{"r", "rename goal"}, kv{"d", "delete goal"},
 		)
 	case panelMeetings:
 		pairs = append(pairs,
@@ -653,7 +792,7 @@ func (a *App) helpPairs() []kv {
 		)
 	case panelActions:
 		pairs = append(pairs,
-			kv{"space", "toggle"}, kv{"←/h/esc", "back"}, kv{"n", "new action item"}, kv{"r", "rename action item"}, kv{"d", "delete action item"},
+			kv{"space", "toggle"}, kv{"t", "open/closed tab"}, kv{"←/h/esc", "back"}, kv{"n", "new action item"}, kv{"r", "rename action item"}, kv{"d", "delete action item"},
 		)
 	case panelGlobalNotes:
 		pairs = append(pairs,
@@ -744,13 +883,13 @@ func (a *App) renderHelpModal() string {
 	var b strings.Builder
 	b.WriteString(titleStyle.Render("lazy1on1 — keybindings") + "\n\n")
 	sections := [][2]string{
-		{"Navigation", "tab / shift+tab     cycle panel\nq (or esc in Meetings/Goals)  back to the People picker, a separate\n                    screen with its own keys (the picker's q quits)\n1/2/3/4/0           jump to Meetings / Global Notes / Goals / Actions / Meeting notes\n↑/k, ↓/j            move cursor within panel\n                    (Meetings syncs the Meeting notes panel as you move, no space needed)\n→/l/enter           confirm selection and drill into panel\n←/h/esc             back out"},
+		{"Navigation", "tab / shift+tab     cycle panel\nq (or esc in Meetings/Goals)  back to the People picker, a separate\n                    screen with its own keys (the picker's q quits)\n1/2/3/4/5           jump to Meetings / Actions / Meeting notes / Global Notes / Goals\n↑/k, ↓/j            move cursor within panel\n                    (Meetings syncs the Meeting notes panel as you move, no space needed)\n→/l/enter           confirm selection and drill into panel\n←/h/esc             back out"},
 		{"People & meetings", "n   new — contextual per panel:\n      People        new person\n      Meetings      new meeting now (opens editor)\n      Goals         new goal (long-term or short-term)\n      Actions,\n      Meeting notes quick-add an action item to the selected meeting\nd   delete — contextual per panel, always asks to confirm:\n      People        delete the selected person and all their data\n      Meetings,\n      Meeting notes delete the selected/current meeting\n      Goals         delete the selected goal\n      Actions       delete the selected action item\n      Global Notes  clear the person's global notes\nr   rename/cycle RAG — contextual per panel:\n      People        rename the selected person\n      Meetings      cycle RAG status (none→green→amber→red)\n      Goals         rename the selected goal\n      Actions       rename the selected action item\nL   lock/unlock — Meetings, Meeting notes:\n      toggle the selected/current meeting's locked state. A locked\n      meeting shows \"(locked)\"/\"[locked]\" and rejects RAG/Pulse\n      changes, notes edits, action items/wins, and deletion — from\n      any panel, including action items reached via the Actions\n      panel — until unlocked again."},
 		{"Meeting notes panel", "↑↓/jk       move between the RAG row, Perceived Pulse row, and notes body\n            (scrolls once the cursor reaches the notes)\nenter/space cycle the selected row's value:\n              RAG              none→green→amber→red\n              Perceived Pulse  none→down→steady→up\nw           log a win since the last 1:1 (appended under \"## Wins\")\np           show/hide the previous meeting's notes below the current ones\n            (also ctrl+p while editing; alt+↑/↓ scrolls it)"},
 		{"Global Notes panel", "a free-form, per-person notes block that persists across all of that\nperson's meetings — unlike Meeting notes, which belong to one meeting.\n↑↓/jk       scroll"},
 		{"Notes", "e   edit notes inline — the selected meeting's notes, or the Global\n    Notes panel's notes if that panel has focus\nE   edit in $EDITOR (same target as e)"},
-		{"Action items", "space toggle selected action item in the Actions panel"},
-		{"Goals", "space toggle selected goal in the Goals panel"},
+		{"Action items", "space toggle selected action item in the Actions panel\nt     switch the Actions panel between its Open and Closed tabs"},
+		{"Goals", "space toggle selected goal in the Goals panel\nt     switch the Goals panel between its Open and Completed tabs"},
 		{"Misc", "?   toggle this help\nq / ctrl+c   quit"},
 	}
 	if a.embedded {

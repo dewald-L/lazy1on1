@@ -14,6 +14,11 @@ var (
 	colorRed         = lipgloss.Color("#f7768e")
 	colorGray        = lipgloss.Color("#565f89")
 	colorBg          = lipgloss.Color("#1a1b26")
+	// Previous-meeting window: darker than every other panel's muted
+	// colors, permanently, to show it is read-only context, not a panel you
+	// can focus or interact with.
+	colorInert     = lipgloss.Color("#3b4261") // its border
+	colorInertText = lipgloss.Color("#4b5275") // its text
 	colorBgSelect    = lipgloss.Color("#283457")
 )
 
@@ -83,6 +88,14 @@ var (
 	panelStyleFocused = panelStyle.
 				Border(lipgloss.ThickBorder()).
 				BorderForeground(colorBorderFocus)
+
+	// panelStyleInert frames the previous-meeting window; it never changes
+	// with focus.
+	panelStyleInert = panelStyle.BorderForeground(colorInert)
+	inertTextStyle  = lipgloss.NewStyle().Foreground(colorInertText)
+
+	scrollThumbStyle = lipgloss.NewStyle().Foreground(colorAccent)
+	scrollTrackStyle = lipgloss.NewStyle().Foreground(colorMuted)
 
 	panelTitleStyle = lipgloss.NewStyle().Bold(true).Foreground(colorAccent)
 

@@ -18,10 +18,10 @@ type panelID int
 const (
 	panelPeople panelID = iota
 	panelMeetings
-	panelGlobalNotes
-	panelGoals
 	panelActions
 	panelDetail
+	panelGlobalNotes
+	panelGoals
 )
 
 type modalID int
@@ -84,9 +84,15 @@ type App struct {
 	meetingsIdx    int // confirmed selection: drives the Detail panel
 	meetingsCursor int // navigational highlight in the Meetings panel, independent until confirmed with space
 
-	actionItems []store.GlobalActionItem // every action item across everyone, most recent first
+	actionItems []store.GlobalActionItem // the selected person's action items, most recent first
 	actionIdx   int                      // selected index within actionItems
-	goalIdx     int                      // selected index within personGoalsOrdered(currentPerson())
+	// allActionItems is the selected person's every action item; actionItems
+	// is the subset on the Actions panel's current tab (open or closed), so
+	// every index into actionItems refers to what is on screen.
+	allActionItems []store.GlobalActionItem
+	actionsClosed  bool // Actions panel tab: false = Open, true = Closed
+	goalIdx     int                      // selected index within visibleGoals(currentPerson())
+	goalsDone   bool                     // Goals panel tab: false = Open, true = Completed
 
 	notesVP      viewport.Model
 	prevVP       viewport.Model // read-only notes of the previous meeting, shown beside the current ones
@@ -220,6 +226,7 @@ func (a *App) reloadMeetings() {
 	if p == nil {
 		a.meetings = nil
 		a.meetingsIdx = 0
+		a.reloadActionItems()
 		a.syncDetail()
 		a.syncGlobalNotes()
 		return
@@ -232,22 +239,54 @@ func (a *App) reloadMeetings() {
 	a.meetings = meetings
 	a.meetingsIdx = clampIdx(a.meetingsIdx, len(a.meetings))
 	a.meetingsCursor = clampIdx(a.meetingsCursor, len(a.meetings))
+	a.reloadActionItems()
 	a.syncDetail()
 	a.syncGlobalNotes()
 	a.layout()
 }
 
-// reloadActionItems refreshes the Actions panel's list from disk: every
-// action item across every person, not just the currently selected one
-// (the person each item belongs to is shown as reference alongside it).
+// reloadActionItems refreshes the Actions panel's list from disk: only the
+// selected person's action items. It also runs whenever the selected person
+// changes (see reloadMeetings).
 func (a *App) reloadActionItems() {
-	items, err := a.store.AllActionItems()
+	p := a.currentPerson()
+	if p == nil {
+		a.allActionItems, a.actionItems = nil, nil
+		a.actionIdx = 0
+		return
+	}
+	items, err := a.store.PersonActionItems(*p)
 	if err != nil {
 		a.errMsg = err.Error()
 		return
 	}
-	a.actionItems = items
+	a.allActionItems = items
+	a.filterActionItems()
+}
+
+// filterActionItems rebuilds actionItems from allActionItems for the current
+// tab.
+func (a *App) filterActionItems() {
+	a.actionItems = nil
+	for _, it := range a.allActionItems {
+		if it.Item.Done == a.actionsClosed {
+			a.actionItems = append(a.actionItems, it)
+		}
+	}
 	a.actionIdx = clampIdx(a.actionIdx, len(a.actionItems))
+}
+
+// actionCounts returns how many of the selected person's action items are
+// open and closed, for the Actions panel's tab labels.
+func (a *App) actionCounts() (open, closed int) {
+	for _, it := range a.allActionItems {
+		if it.Item.Done {
+			closed++
+		} else {
+			open++
+		}
+	}
+	return open, closed
 }
 
 // clampIdx bounds i to a valid index into a slice of length n (0 if n is 0).
@@ -298,7 +337,7 @@ func (a *App) syncDetail() {
 	a.notesVP.SetContent(renderNotes(m))
 	a.notesVP.GotoTop()
 	if prev := a.previousMeeting(); prev != nil {
-		a.prevVP.SetContent(renderNotes(prev))
+		a.prevVP.SetContent(inert(renderNotes(prev)))
 	} else {
 		a.prevVP.SetContent("")
 	}
@@ -315,21 +354,21 @@ func (a *App) previousMeeting() *store.Meeting {
 	return &a.meetings[i]
 }
 
-// minNotesBodyForPrev is the notes-body height needed before the previous
-// meeting section is shown; below it the current notes keep all the room.
-const minNotesBodyForPrev = 9
+// minRightWidthForPrev is the right-column content width needed before the
+// previous meeting gets its own window beside the current notes; below it the
+// current notes keep all the room.
+const minRightWidthForPrev = 70
 
-// prevVisible reports whether the previous-meeting section is on screen.
+// prevVisible reports whether the previous-meeting window is on screen.
 func (a *App) prevVisible() bool {
-	return a.showPrev && a.previousMeeting() != nil && a.notesBodyHeight() >= minNotesBodyForPrev
+	return a.showPrev && a.previousMeeting() != nil && a.rightWidth() >= minRightWidthForPrev
 }
 
 // notesBodyHeight is the height available to the notes body (viewport or
 // editor) before any split with the previous-meeting section.
 func (a *App) notesBodyHeight() int {
-	// -3 for the header/separator lines, -3 for the RAG row, Perceived
-	// Pulse row and second separator (see renderDetailPanel).
-	h := a.detailHeight() - 3 - 3
+	// -2 for the title and separator lines (see renderDetailPanel).
+	h := a.detailHeight() - 2
 	if h < 3 {
 		h = 3
 	}
@@ -370,6 +409,34 @@ func personGoalsOrdered(p *store.Person) []store.Goal {
 		}
 	}
 	return out
+}
+
+// visibleGoals is personGoalsOrdered restricted to the Goals panel's current
+// tab (open or completed). goalIdx indexes into this slice.
+func (a *App) visibleGoals(p *store.Person) []store.Goal {
+	var out []store.Goal
+	for _, g := range personGoalsOrdered(p) {
+		if g.Done == a.goalsDone {
+			out = append(out, g)
+		}
+	}
+	return out
+}
+
+// goalCounts returns how many of p's goals are open and completed, for the
+// Goals panel's tab labels.
+func goalCounts(p *store.Person) (open, done int) {
+	if p == nil {
+		return 0, 0
+	}
+	for _, g := range p.Goals {
+		if g.Done {
+			done++
+		} else {
+			open++
+		}
+	}
+	return open, done
 }
 
 // notesOnly returns the body lines up to (not including) the "## Action

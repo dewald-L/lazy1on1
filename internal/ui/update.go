@@ -105,26 +105,24 @@ func (a *App) layout() {
 	if a.height <= 0 {
 		return
 	}
-	detailWidth := a.width - leftColumnWidth() - 6
-	if detailWidth < 10 {
-		detailWidth = 10
-	}
-	a.notesVP.Width = detailWidth - 2
+	detailWidth := a.detailWidth()
+	a.notesVP.Width = detailWidth - 3 // -1 for the scrollbar
 	a.notesVP.Height = a.notesBodyHeight()
-	a.prevVP.Width = detailWidth - 2
 	if a.prevVisible() {
-		// Split the body: current notes on top, then a one-line title and
-		// the read-only previous meeting below.
-		prevH := (a.notesVP.Height - 1) / 2
-		a.prevVP.Height = prevH
-		a.notesVP.Height -= prevH + 1
+		// The previous meeting is its own window beside the current
+		// notes: a title line and a hint line sit above its viewport.
+		a.prevVP.Width = a.prevWidth() - 3
+		a.prevVP.Height = a.detailHeight() - 2
+		if a.prevVP.Height < 3 {
+			a.prevVP.Height = 3
+		}
 	}
 	a.editArea.SetWidth(a.notesVP.Width)
 	a.editArea.SetHeight(a.notesVP.Height)
 
 	// Global Notes panel: same width as Detail (same right column), minus
 	// just its own title line (see renderGlobalNotesPanel).
-	a.globalNotesVP.Width = detailWidth - 2
+	a.globalNotesVP.Width = a.globalNotesWidth() - 3
 	a.globalNotesVP.Height = a.globalNotesHeight() - 1
 	if a.globalNotesVP.Height < 2 {
 		a.globalNotesVP.Height = 2
@@ -133,7 +131,54 @@ func (a *App) layout() {
 	a.globalNotesEditArea.SetHeight(a.globalNotesVP.Height)
 }
 
-func leftColumnWidth() int { return 34 }
+// rowWidth is the content width of a full-width row of panels.
+func (a *App) rowWidth() int {
+	w := a.width - 4
+	if w < 20 {
+		w = 20
+	}
+	return w
+}
+
+// splitRow divides a row's content width into two bordered panels, giving
+// the first panel fracNum/fracDen of the space; the extra 2 columns of the
+// second border come out of the shared budget.
+func (a *App) splitRow(fracNum, fracDen int) (first, second int) {
+	avail := a.rowWidth() - 2
+	first = avail * fracNum / fracDen
+	return first, avail - first
+}
+
+// rightWidth is the content width of the notes row (current + previous).
+func (a *App) rightWidth() int { return a.rowWidth() }
+
+// detailWidth is the content width of the Meeting notes window, the right
+// one of the pair; Goals sits under it with the same width. When the
+// previous meeting is hidden the notes take the whole row.
+func (a *App) detailWidth() int {
+	if !a.prevVisible() {
+		return a.rowWidth()
+	}
+	_, w := a.splitRow(2, 5)
+	return w
+}
+
+// prevWidth is the content width of the previous-meeting window, the left
+// one of the pair (and of the Actions panel under it).
+func (a *App) prevWidth() int {
+	w, _ := a.splitRow(2, 5)
+	return w
+}
+
+// globalNotesWidth / goalsWidth: the bottom row is always split like the
+// notes row (Global Notes under Previous, Goals under Meeting notes), even
+// when the previous meeting is hidden.
+func (a *App) globalNotesWidth() int { w, _ := a.splitRow(2, 5); return w }
+func (a *App) goalsWidth() int       { _, w := a.splitRow(2, 5); return w }
+
+// meetingsWidth / actionsWidth split the top row.
+func (a *App) meetingsWidth() int { w, _ := a.splitRow(2, 5); return w }
+func (a *App) actionsWidth() int  { _, w := a.splitRow(2, 5); return w }
 
 // totalBodyHeight is the vertical space available for the body row (the
 // People/Meetings/Detail panels) before any individual panel's own border
@@ -146,67 +191,45 @@ func (a *App) totalBodyHeight() int {
 	return h
 }
 
-// globalNotesHeight and detailHeight split the right column's vertical space
-// between the Global Notes panel and the Detail panel, each with its own
-// border - mirrors how peopleHeight/goalsHeight/etc. split the left column.
-// Global Notes gets a smaller fixed share since it's usually a short
-// freeform blurb about the person; Detail gets whatever's left.
-func (a *App) globalNotesHeight() int {
-	avail := a.totalBodyHeight() - 4 // two panels' worth of borders
-	h := avail / 4
-	if h < 3 {
-		h = 3
-	}
-	return h
-}
-
-// detailHeight is the Detail panel's content height, sharing the right
-// column with the Global Notes panel above it (both borders come out of the
-// same budget - see globalNotesHeight).
-func (a *App) detailHeight() int {
-	avail := a.totalBodyHeight() - 4
-	h := avail - a.globalNotesHeight()
-	if h < 3 {
-		h = 3
-	}
-	return h
-}
-
-// peopleHeight, goalsHeight, actionsHeight and meetingsHeight split the left
-// column's vertical space between the People, Meetings, Goals and Actions
-// panels, lazygit-sidebar style: four panels stacked in one column, each
-// with its own border, so all four borders come out of the shared budget.
-// People and Goals get a smaller fixed share since their rows are short;
-// Actions gets a bigger one since each of its rows takes two lines (the
-// item and, under it, the meeting it came from); Meetings — usually the
-// longest list — gets whatever's left.
+// The body is four rows of bordered panels (the fourth, the Detail graphs,
+// is outside totalBodyHeight):
+//
+//	top:    Meetings | Actions             (topHeight)
+//	middle: Previous | Meeting notes       (detailHeight, gets the rest)
+//	bottom: Global Notes | Goals           (bottomHeight)
+//
+// Each panel has its own border, so three rows' worth (6 lines) come out of
+// the shared budget.
 //
 // lipgloss's Height() only pads short content up to that height, it never
-// truncates content that's taller, so a panel whose actual content exceeds
-// its share will silently grow and push everything below and beside the
-// left column out of sync. renderActionsPanel clips its item list to
-// actionsHeight() for exactly this reason.
-func (a *App) goalsHeight() int {
-	avail := a.totalBodyHeight() - 6
-	h := avail / 4
-	if h < 3 {
-		h = 3
-	}
-	return h
-}
-
-func (a *App) actionsHeight() int {
-	avail := a.totalBodyHeight() - 6
-	h := avail / 4
+// truncates content that's taller, so a panel whose content exceeds its
+// share silently grows and pushes the rows below it out of sync.
+// renderActionsPanel, renderGoalsPanel and renderMeetingsPanel clip to
+// their heights for exactly this reason.
+func (a *App) topHeight() int {
+	h := (a.totalBodyHeight() - 6) / 5
 	if h < 4 {
 		h = 4
 	}
 	return h
 }
 
-func (a *App) meetingsHeight() int {
-	avail := a.totalBodyHeight() - 6
-	h := avail - a.goalsHeight() - a.actionsHeight()
+func (a *App) bottomHeight() int {
+	h := (a.totalBodyHeight() - 6) / 4
+	if h < 5 {
+		h = 5
+	}
+	return h
+}
+
+func (a *App) meetingsHeight() int    { return a.topHeight() }
+func (a *App) actionsHeight() int     { return a.topHeight() }
+func (a *App) globalNotesHeight() int { return a.bottomHeight() }
+func (a *App) goalsHeight() int       { return a.bottomHeight() }
+
+// detailHeight is the Meeting notes / Previous meeting content height.
+func (a *App) detailHeight() int {
+	h := a.totalBodyHeight() - 6 - a.topHeight() - a.bottomHeight()
 	if h < 3 {
 		h = 3
 	}
@@ -269,16 +292,16 @@ func (a *App) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		a.setFocus(panelMeetings)
 		return a, nil
 	case isKey(msg, "2"):
-		a.setFocus(panelGlobalNotes)
-		return a, nil
-	case isKey(msg, "3"):
-		a.setFocus(panelGoals)
-		return a, nil
-	case isKey(msg, "4"):
 		a.setFocus(panelActions)
 		return a, nil
-	case isKey(msg, "0"):
+	case isKey(msg, "3"):
 		a.setFocus(panelDetail)
+		return a, nil
+	case isKey(msg, "4"):
+		a.setFocus(panelGlobalNotes)
+		return a, nil
+	case isKey(msg, "5"):
+		a.setFocus(panelGoals)
 		return a, nil
 	case isKey(msg, "e"):
 		return a.editForFocus()
@@ -407,7 +430,7 @@ func (a *App) renamePersonPrompt() (tea.Model, tea.Cmd) {
 
 func (a *App) renameGoalPrompt() (tea.Model, tea.Cmd) {
 	p := a.currentPerson()
-	goals := personGoalsOrdered(p)
+	goals := a.visibleGoals(p)
 	if p == nil || a.goalIdx < 0 || a.goalIdx >= len(goals) {
 		return a, nil
 	}
@@ -466,7 +489,7 @@ func (a *App) confirmDeletePerson() (tea.Model, tea.Cmd) {
 
 func (a *App) confirmDeleteGoal() (tea.Model, tea.Cmd) {
 	p := a.currentPerson()
-	goals := personGoalsOrdered(p)
+	goals := a.visibleGoals(p)
 	if p == nil || a.goalIdx < 0 || a.goalIdx >= len(goals) {
 		return a, nil
 	}
@@ -479,7 +502,7 @@ func (a *App) confirmDeleteGoal() (tea.Model, tea.Cmd) {
 			return
 		}
 		a.reloadPeople()
-		a.goalIdx = clampIdx(a.goalIdx, len(personGoalsOrdered(a.currentPerson())))
+		a.goalIdx = clampIdx(a.goalIdx, len(a.visibleGoals(a.currentPerson())))
 		a.status = "deleted goal"
 	}
 	a.modal = modalConfirmDelete
@@ -792,14 +815,20 @@ func (a *App) handleGlobalNotesKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 // --- panel: actions ---------------------------------------------------
 
-// handleActionsKey drives the Actions panel: every action item across
-// every person, flattened into one list by reloadActionItems().
+// handleActionsKey drives the Actions panel: the selected person's action
+// items across their meetings, flattened into one list by
+// reloadActionItems().
 func (a *App) handleActionsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	items := a.actionItems
 
 	switch {
 	case isKey(msg, "left", "h", "esc"):
 		a.setFocus(panelMeetings)
+		return a, nil
+	case isKey(msg, "t"):
+		a.actionsClosed = !a.actionsClosed
+		a.actionIdx = 0
+		a.filterActionItems()
 		return a, nil
 	case isKey(msg, "up", "k"):
 		if a.actionIdx > 0 {
@@ -830,11 +859,15 @@ func (a *App) handleActionsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 func (a *App) handleGoalsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	p := a.currentPerson()
-	goals := personGoalsOrdered(p)
+	goals := a.visibleGoals(p)
 
 	switch {
 	case isKey(msg, "esc"):
 		return a.openPeople()
+	case isKey(msg, "t"):
+		a.goalsDone = !a.goalsDone
+		a.goalIdx = 0
+		return a, nil
 	case isKey(msg, "up", "k"):
 		if a.goalIdx > 0 {
 			a.goalIdx--
@@ -864,7 +897,7 @@ func (a *App) handleGoalsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (a *App) refreshGoalsKeepSelection() {
 	keepGoal := a.goalIdx
 	a.reloadPeople()
-	a.goalIdx = keepGoal
+	a.goalIdx = clampIdx(keepGoal, len(a.visibleGoals(a.currentPerson())))
 }
 
 // --- actions shared across panels ---------------------------------------
