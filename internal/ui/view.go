@@ -137,14 +137,11 @@ func (a *App) renderPeopleModal() string {
 		b.WriteString(dimItemStyle.Render("no one yet\npress n to add") + "\n")
 	}
 	for i, p := range a.people {
-		// The cursor row is a solid highlight (no underline); the person
-		// currently open elsewhere keeps a quiet tint.
+		// Only the cursor row is highlighted; everyone else is styled
+		// identically (no marker for the person currently open).
 		style := normalItemStyle
-		switch {
-		case i == a.peopleCursor:
+		if i == a.peopleCursor {
 			style = selectedItemStyle
-		case i == a.peopleIdx:
-			style = selectedItemStyleDim
 		}
 		b.WriteString(style.Render(p.Name))
 		b.WriteString("\n")
