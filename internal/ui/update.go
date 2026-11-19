@@ -277,7 +277,7 @@ func (a *App) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case isKey(msg, "4"):
 		a.setFocus(panelActions)
 		return a, nil
-	case isKey(msg, "5"):
+	case isKey(msg, "0"):
 		a.setFocus(panelDetail)
 		return a, nil
 	case isKey(msg, "e"):

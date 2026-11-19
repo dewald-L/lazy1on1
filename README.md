@@ -147,7 +147,7 @@ titled **Detail** — spans the full width along the bottom.
   about the selected person that persist across all of their meetings, not
   tied to any single one (e.g. background, career context, running
   observations). Separate from a meeting's own notes below it.
-- **Meeting notes** (right, bottom, keyboard-focusable — `5`) — the selected
+- **Meeting notes** (right, bottom, keyboard-focusable — `0`) — the selected
   meeting's RAG and Perceived Pulse status (interactive header rows), wins
   since the last 1:1, and that meeting's own notes. The previous meeting's
   notes are shown read-only underneath (toggle with `p`), also while editing.
@@ -175,7 +175,7 @@ Global, from any panel:
 |---|---|
 | `tab` / `shift+tab` | Cycle focus between panels |
 | `q` | Back to the People picker (`ctrl+c` quits) |
-| `1` / `2` / `3` / `4` / `5` | Jump straight to Meetings / Global Notes / Goals / Actions / Meeting notes |
+| `1` / `2` / `3` / `4` / `0` | Jump straight to Meetings / Global Notes / Goals / Actions / Meeting notes |
 | `r` | Cycle the selected meeting's RAG status: none → green → amber → red |
 | `?` | Help |
 
