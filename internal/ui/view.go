@@ -108,12 +108,47 @@ func renderMetricRow(isCursor bool, label, glyph string, glyphColor lipgloss.Col
 		normalItemStyle.Render(" "+value)
 }
 
-func panelBorder(focused bool, title string, width, height int) lipgloss.Style {
+// panelFrame renders a bordered panel whose title sits inline in the top
+// border (like dock's home page boxes) instead of taking a content row.
+type panelFrame struct {
+	style   lipgloss.Style
+	title   string
+	focused bool
+}
+
+func panelBorder(focused bool, title string, width, height int) panelFrame {
 	s := panelStyle
 	if focused {
 		s = panelStyleFocused
 	}
-	return s.Width(width).Height(height)
+	if !strings.Contains(title, "\x1b") {
+		title = panelTitleStyle.Render(title)
+	}
+	return panelFrame{style: s.Width(width).Height(height), title: title, focused: focused}
+}
+
+func (f panelFrame) Render(content string) string {
+	out := f.style.Render(content)
+	lines := strings.Split(out, "\n")
+	w := lipgloss.Width(lines[0])
+	if w < 6 || f.title == "" {
+		return out
+	}
+	border := lipgloss.RoundedBorder()
+	if f.focused {
+		border = lipgloss.ThickBorder()
+	}
+	bs := lipgloss.NewStyle().Foreground(colorMuted)
+	if f.focused {
+		bs = lipgloss.NewStyle().Foreground(colorBorderFocus)
+	}
+	t := ansi.Truncate(" "+f.title+" ", w-4, "…")
+	fill := w - 3 - lipgloss.Width(t)
+	if fill < 0 {
+		fill = 0
+	}
+	lines[0] = bs.Render(border.TopLeft+border.Top) + t + bs.Render(strings.Repeat(border.Top, fill)+border.TopRight)
+	return strings.Join(lines, "\n")
 }
 
 func relDate(t time.Time) string {
@@ -163,7 +198,6 @@ func (a *App) renderGoalsPanel() string {
 	if p != nil {
 		title = shortcut + "Goals — " + p.Name
 	}
-	b.WriteString(panelTitleStyle.Render(title) + "\n")
 
 	if p == nil {
 		b.WriteString("\n" + dimItemStyle.Render("select a person"))
@@ -235,7 +269,7 @@ func (a *App) renderGoalsPanel() string {
 
 	// Scroll the goal lines so the selected goal stays visible.
 	all := strings.Split(body.String(), "\n")
-	capacity := h - 2
+	capacity := h - 1
 	if capacity < 1 {
 		capacity = 1
 	}
@@ -265,7 +299,6 @@ func (a *App) renderMeetingsPanel() string {
 	if p != nil {
 		title = shortcut + "Meetings — " + p.Name
 	}
-	b.WriteString(panelTitleStyle.Render(title) + "\n\n")
 
 	if p == nil {
 		b.WriteString(dimItemStyle.Render("select a person"))
@@ -275,7 +308,7 @@ func (a *App) renderMeetingsPanel() string {
 
 	// Window the list so the cursor stays visible. Rows with tags take two
 	// lines, so the clip below is the backstop for the visible count.
-	capacity := h - 2
+	capacity := h
 	start := 0
 	if capacity > 0 && a.meetingsCursor >= capacity {
 		start = a.meetingsCursor - capacity + 1
@@ -396,7 +429,6 @@ func (a *App) renderActionsPanel() string {
 	if p := a.currentPerson(); p != nil {
 		title = shortcut + "Actions — " + p.Name
 	}
-	b.WriteString(panelTitleStyle.Render(title) + "\n")
 
 	// Open / Closed tabs (toggle with t).
 	nOpen, nClosed := a.actionCounts()
@@ -425,7 +457,7 @@ func (a *App) renderActionsPanel() string {
 	// Each item takes two lines (the item, then who it belongs to). Window
 	// the list to what fits in h so an unbounded item count can't grow this
 	// panel past its share, keeping the selected item visible.
-	capacity := (h - 2) / 2
+	capacity := (h - 1) / 2
 	if capacity < 1 {
 		capacity = 1
 	}
@@ -481,7 +513,6 @@ func (a *App) renderGlobalNotesPanel() string {
 	}
 
 	var b strings.Builder
-	b.WriteString(panelTitleStyle.Render(title) + "\n")
 
 	if p == nil {
 		b.WriteString(dimItemStyle.Render("select a person"))
@@ -521,10 +552,10 @@ func (a *App) renderDetailPanel() string {
 
 	var b strings.Builder
 	detailShortcut := panelShortcut(panelDetail)
+	title := detailShortcut + "Meeting notes"
 	if p == nil {
-		b.WriteString(panelTitleStyle.Render(detailShortcut+"Meeting notes") + "\n\n")
 		b.WriteString(dimItemStyle.Render("nothing selected yet"))
-		return panelBorder(focused, "Meeting notes", w, h).Render(b.String())
+		return panelBorder(focused, detailShortcut+"Meeting notes", w, h).Render(b.String())
 	}
 
 	if m != nil {
@@ -536,8 +567,7 @@ func (a *App) renderDetailPanel() string {
 		if len(m.Tags) > 0 {
 			headerLine += "  " + tagStyle.Render(strings.Join(m.Tags, ", "))
 		}
-		b.WriteString(headerLine + "\n")
-		b.WriteString(strings.Repeat("─", min(w-4, 60)) + "\n")
+		title = headerLine
 
 		if a.modal == modalEditNotes {
 			b.WriteString(a.editArea.View())
@@ -545,11 +575,11 @@ func (a *App) renderDetailPanel() string {
 			b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, a.notesVP.View(), vpScrollbar(a.notesVP)))
 		}
 	} else {
-		b.WriteString(panelTitleStyle.Render(detailShortcut+"Meeting notes — "+p.Name) + "\n\n")
+		title = detailShortcut + "Meeting notes — " + p.Name
 		b.WriteString(dimItemStyle.Render("no meetings yet — press 'N' to add one") + "\n")
 	}
 
-	return panelBorder(focused, "Meeting notes", w, h).Render(b.String())
+	return panelBorder(focused, title, w, h).Render(b.String())
 }
 
 // --- RAG / Perceived Pulse over-time panel ---------------------------------
@@ -641,7 +671,6 @@ func (a *App) renderStatusGraphsPanel() string {
 	}
 
 	var b strings.Builder
-	b.WriteString(panelTitleStyle.Render(title))
 	if m := a.currentMeeting(); m != nil {
 		focused := a.focus == panelDetail
 		metric := func(on bool, label, glyph string, c lipgloss.Color, val string) string {
@@ -651,7 +680,7 @@ func (a *App) renderStatusGraphsPanel() string {
 			}
 			return l + " " + lipgloss.NewStyle().Foreground(c).Render(glyph) + " " + val
 		}
-		b.WriteString("   " + metric(focused && a.detailCursor == detailRowRAG, "RAG",
+		b.WriteString(metric(focused && a.detailCursor == detailRowRAG, "RAG",
 			ragGlyphChar(string(m.RAG)), ragColor(string(m.RAG)), ragLabel(string(m.RAG))))
 		b.WriteString("   " + metric(focused && a.detailCursor == detailRowPerceivedPulse, "Perceived Pulse",
 			perceivedPulseGlyphChar(string(m.PerceivedPulse)), perceivedPulseColor(string(m.PerceivedPulse)), m.PerceivedPulse.Label()))

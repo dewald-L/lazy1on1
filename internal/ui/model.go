@@ -367,8 +367,7 @@ func (a *App) prevVisible() bool {
 // notesBodyHeight is the height available to the notes body (viewport or
 // editor) before any split with the previous-meeting section.
 func (a *App) notesBodyHeight() int {
-	// -2 for the title and separator lines (see renderDetailPanel).
-	h := a.detailHeight() - 2
+	h := a.detailHeight()
 	if h < 3 {
 		h = 3
 	}

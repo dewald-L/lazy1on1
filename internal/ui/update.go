@@ -123,7 +123,7 @@ func (a *App) layout() {
 	// Global Notes panel: same width as Detail (same right column), minus
 	// just its own title line (see renderGlobalNotesPanel).
 	a.globalNotesVP.Width = a.globalNotesWidth() - 3
-	a.globalNotesVP.Height = a.globalNotesHeight() - 1
+	a.globalNotesVP.Height = a.globalNotesHeight()
 	if a.globalNotesVP.Height < 2 {
 		a.globalNotesVP.Height = 2
 	}
