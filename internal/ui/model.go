@@ -89,6 +89,8 @@ type App struct {
 	goalIdx     int                      // selected index within personGoalsOrdered(currentPerson())
 
 	notesVP      viewport.Model
+	prevVP       viewport.Model // read-only notes of the previous meeting, shown beside the current ones
+	showPrev     bool           // whether the previous-meeting section is enabled (toggle: p / ctrl+p)
 	detailCursor detailRow // row cursor within the Detail panel's header strip (RAG/Perceived Pulse) or notes body
 
 	globalNotesVP              viewport.Model
@@ -162,6 +164,8 @@ func New(s *store.Store) *App {
 		store:               s,
 		focus:               panelMeetings,
 		notesVP:             viewport.New(10, 10),
+		prevVP:              viewport.New(10, 3),
+		showPrev:            true,
 		globalNotesVP:       viewport.New(10, 10),
 		globalNotesEditArea: gnta,
 		nameInput:           ni,
@@ -280,13 +284,52 @@ func (a *App) selectMeetingByPath(path string) {
 func (a *App) syncDetail() {
 	a.goalIdx = 0
 	a.detailCursor = detailRowRAG
+	defer a.layout() // the previous-meeting section may appear/disappear
 	m := a.currentMeeting()
 	if m == nil {
 		a.notesVP.SetContent("")
+		a.prevVP.SetContent("")
 		return
 	}
 	a.notesVP.SetContent(renderNotes(m))
 	a.notesVP.GotoTop()
+	if prev := a.previousMeeting(); prev != nil {
+		a.prevVP.SetContent(renderNotes(prev))
+	} else {
+		a.prevVP.SetContent("")
+	}
+	a.prevVP.GotoTop()
+}
+
+// previousMeeting is the meeting just before the selected one in time
+// (meetings are listed most recent first), or nil for the oldest meeting.
+func (a *App) previousMeeting() *store.Meeting {
+	i := a.meetingsIdx + 1
+	if a.currentMeeting() == nil || i >= len(a.meetings) {
+		return nil
+	}
+	return &a.meetings[i]
+}
+
+// minNotesBodyForPrev is the notes-body height needed before the previous
+// meeting section is shown; below it the current notes keep all the room.
+const minNotesBodyForPrev = 9
+
+// prevVisible reports whether the previous-meeting section is on screen.
+func (a *App) prevVisible() bool {
+	return a.showPrev && a.previousMeeting() != nil && a.notesBodyHeight() >= minNotesBodyForPrev
+}
+
+// notesBodyHeight is the height available to the notes body (viewport or
+// editor) before any split with the previous-meeting section.
+func (a *App) notesBodyHeight() int {
+	// -3 for the header/separator lines, -3 for the RAG row, Perceived
+	// Pulse row and second separator (see renderDetailPanel).
+	h := a.detailHeight() - 3 - 3
+	if h < 3 {
+		h = 3
+	}
+	return h
 }
 
 // syncGlobalNotes refreshes the Global Notes panel's viewport from the

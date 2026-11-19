@@ -399,6 +399,11 @@ func (a *App) renderDetailPanel() string {
 		} else {
 			b.WriteString(a.notesVP.View())
 		}
+		if a.prevVisible() {
+			prev := a.previousMeeting()
+			b.WriteString("\n" + dimItemStyle.Render("Previous meeting — "+prev.Date.Format("Mon, Jan 2 2006 · 15:04")+"  (alt+↑/↓ scroll)") + "\n")
+			b.WriteString(a.prevVP.View())
+		}
 	} else {
 		b.WriteString(panelTitleStyle.Render(detailShortcut+"Meeting notes — "+p.Name) + "\n\n")
 		b.WriteString(dimItemStyle.Render("no meetings yet — press 'N' to add one") + "\n")
@@ -615,7 +620,7 @@ func (a *App) helpPairs() []kv {
 
 	switch a.modal {
 	case modalEditNotes, modalEditGlobalNotes:
-		return append(pairs, kv{"ctrl+s", "save"}, kv{"esc", "cancel"})
+		return append(pairs, kv{"ctrl+s", "save"}, kv{"ctrl+p", "previous meeting"}, kv{"esc", "cancel"})
 	case modalConfirmDelete:
 		return append(pairs, kv{"y/enter", "confirm"}, kv{"esc/n", "cancel"})
 	case modalRename:
@@ -645,7 +650,7 @@ func (a *App) helpPairs() []kv {
 	case panelDetail:
 		pairs = append(pairs,
 			kv{"enter/space", "cycle RAG/Pulse"}, kv{"←/h/esc", "back"},
-			kv{"w", "add win"}, kv{"n", "new action item"}, kv{"e", "edit notes"}, kv{"E", "$EDITOR"},
+			kv{"w", "add win"}, kv{"p", "previous meeting"}, kv{"n", "new action item"}, kv{"e", "edit notes"}, kv{"E", "$EDITOR"},
 			kv{"L", "lock/unlock"}, kv{"d", "delete meeting"},
 		)
 	}
@@ -729,7 +734,7 @@ func (a *App) renderHelpModal() string {
 	sections := [][2]string{
 		{"Navigation", "tab / shift+tab     cycle panel\n1                   open the People picker (modal)\n2/3/4/5/0           jump to Meetings / Global Notes / Goals / Actions / Meeting notes\n↑/k, ↓/j            move cursor within panel\nspace               confirm cursor as selection (People)\n                    (Meetings syncs the Meeting notes panel as you move, no space needed)\n→/l/enter           confirm selection and drill into panel\n←/h/esc             back out"},
 		{"People & meetings", "n   new — contextual per panel:\n      People        new person\n      Meetings      new meeting now (opens editor)\n      Goals         new goal (long-term or short-term)\n      Actions,\n      Meeting notes quick-add an action item to the selected meeting\nd   delete — contextual per panel, always asks to confirm:\n      People        delete the selected person and all their data\n      Meetings,\n      Meeting notes delete the selected/current meeting\n      Goals         delete the selected goal\n      Actions       delete the selected action item\n      Global Notes  clear the person's global notes\nr   rename/cycle RAG — contextual per panel:\n      People        rename the selected person\n      Meetings      cycle RAG status (none→green→amber→red)\n      Goals         rename the selected goal\n      Actions       rename the selected action item\nL   lock/unlock — Meetings, Meeting notes:\n      toggle the selected/current meeting's locked state. A locked\n      meeting shows \"(locked)\"/\"[locked]\" and rejects RAG/Pulse\n      changes, notes edits, action items/wins, and deletion — from\n      any panel, including action items reached via the Actions\n      panel — until unlocked again."},
-		{"Meeting notes panel", "↑↓/jk       move between the RAG row, Perceived Pulse row, and notes body\n            (scrolls once the cursor reaches the notes)\nenter/space cycle the selected row's value:\n              RAG              none→green→amber→red\n              Perceived Pulse  none→down→steady→up\nw           log a win since the last 1:1 (appended under \"## Wins\")"},
+		{"Meeting notes panel", "↑↓/jk       move between the RAG row, Perceived Pulse row, and notes body\n            (scrolls once the cursor reaches the notes)\nenter/space cycle the selected row's value:\n              RAG              none→green→amber→red\n              Perceived Pulse  none→down→steady→up\nw           log a win since the last 1:1 (appended under \"## Wins\")\np           show/hide the previous meeting's notes below the current ones\n            (also ctrl+p while editing; alt+↑/↓ scrolls it)"},
 		{"Global Notes panel", "a free-form, per-person notes block that persists across all of that\nperson's meetings — unlike Meeting notes, which belong to one meeting.\n↑↓/jk       scroll"},
 		{"Notes", "e   edit notes inline — the selected meeting's notes, or the Global\n    Notes panel's notes if that panel has focus\nE   edit in $EDITOR (same target as e)"},
 		{"Action items", "space toggle selected action item in the Actions panel"},

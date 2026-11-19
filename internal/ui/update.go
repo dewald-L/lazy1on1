@@ -105,18 +105,19 @@ func (a *App) layout() {
 	if a.height <= 0 {
 		return
 	}
-	detailContentHeight := a.detailHeight()
 	detailWidth := a.width - leftColumnWidth() - 6
 	if detailWidth < 10 {
 		detailWidth = 10
 	}
 	a.notesVP.Width = detailWidth - 2
-	// -3 for the header/separator lines that were already accounted for,
-	// -3 more for the RAG row, Perceived Pulse row, and the second separator
-	// above the notes body (see renderDetailPanel).
-	a.notesVP.Height = detailContentHeight - 3 - 3
-	if a.notesVP.Height < 3 {
-		a.notesVP.Height = 3
+	a.notesVP.Height = a.notesBodyHeight()
+	a.prevVP.Width = detailWidth - 2
+	if a.prevVisible() {
+		// Split the body: current notes on top, then a one-line title and
+		// the read-only previous meeting below.
+		prevH := (a.notesVP.Height - 1) / 2
+		a.prevVP.Height = prevH
+		a.notesVP.Height -= prevH + 1
 	}
 	a.editArea.SetWidth(a.notesVP.Width)
 	a.editArea.SetHeight(a.notesVP.Height)
@@ -701,6 +702,14 @@ func (a *App) handleDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return a.activateDetailRow()
 	case isKey(msg, "w"):
 		return a.startAddWin()
+	case isKey(msg, "p"):
+		return a.togglePrev()
+	case isKey(msg, "alt+up"):
+		a.prevVP.LineUp(1)
+		return a, nil
+	case isKey(msg, "alt+down"):
+		a.prevVP.LineDown(1)
+		return a, nil
 	}
 	return a, nil
 }
@@ -1284,8 +1293,30 @@ func (a *App) handleRenameKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 // --- modal: edit notes (inline textarea) -----------------------------------
 
+// togglePrev shows/hides the previous-meeting section next to the notes.
+func (a *App) togglePrev() (tea.Model, tea.Cmd) {
+	a.showPrev = !a.showPrev
+	a.layout()
+	switch {
+	case a.currentMeeting() == nil:
+	case a.previousMeeting() == nil:
+		a.status = "no previous meeting"
+	case a.showPrev && !a.prevVisible():
+		a.status = "not enough room for the previous meeting"
+	}
+	return a, nil
+}
+
 func (a *App) handleEditNotesKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch {
+	case isKey(msg, "ctrl+p"):
+		return a.togglePrev()
+	case isKey(msg, "alt+up"):
+		a.prevVP.LineUp(1)
+		return a, nil
+	case isKey(msg, "alt+down"):
+		a.prevVP.LineDown(1)
+		return a, nil
 	case isKey(msg, "esc"):
 		a.modal = modalNone
 		a.editArea.Blur()
